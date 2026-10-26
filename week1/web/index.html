@@ -195,6 +195,38 @@
   }
   .tabs .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
 
+  /* ===== 第4周：自然语言助手面板 ===== */
+  /* 变量名必须用页面里**真实存在**的：--surface-2 / --border / --text / --muted。
+     写错名字不会报错，只是不生效 —— 界面上就变成"没样式"，
+     而那种问题很难一眼看出是自己写错了变量名。 */
+  .nlrow { display: flex; gap: 8px; margin: 12px 0 8px; }
+  .nlrow input { flex: 1; min-width: 0; }
+  .nlchips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .nlchips button {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+    cursor: pointer;
+  }
+  .nlchips button:hover { border-color: var(--hot); }
+
+  .nllog { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+  .nlempty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+  .nlmsg { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .nlmsg.me { background: var(--surface-2); }
+  .nlmsg.bot { background: var(--card); }
+  .nlmsg .who { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .nlmsg .body { white-space: pre-wrap; font-size: 13.5px; line-height: 1.65; }
+
+  /* 这一栏是关键：把「模型判成了什么意图」「调用了哪个工具」「证据是什么」
+     摆在回答下面。不然用户只看到一段话，无从判断它是不是真的查了库。 */
+  .nlmeta { margin-top: 8px; font-size: 11.5px; color: var(--muted);
+            display: flex; flex-wrap: wrap; gap: 6px; }
+  .nlmeta span { border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
+  .nlmeta span.ok { color: var(--ok-fg); border-color: var(--ok-border); }
+  .nlmeta span.bad { color: var(--bad); border-color: var(--bad-border); }
+  .nllog .busy { color: var(--muted); font-size: 13px; }
+
   /* 显隐规则全在 CSS 里，JS 只改 body 上的一个属性。
      逐个元素 toggle 的话，分区一多就容易出现"两个同时可见"或"都不见"。 */
   .panel { display: none; }
@@ -203,7 +235,8 @@
   body[data-tab="command"]  #panel-command,
   body[data-tab="help"]     #panel-help,
   body[data-tab="camera"]   #panel-camera,
-  body[data-tab="data"]     #panel-data { display: block; }
+  body[data-tab="data"]     #panel-data,
+  body[data-tab="nl"]       #panel-nl { display: block; }
 
   /* 窄屏：不让「全部」被 margin-left:auto 单独推到第二行右侧 ——
      那看着像出了 bug，而不是像"两行标签"。 */
@@ -464,6 +497,7 @@
       <span class="badge" id="badgeHelp" hidden title="有待回应的求助">0</span></button>
     <button role="tab" data-tab="camera" aria-selected="false">影像</button>
     <button role="tab" data-tab="data" aria-selected="false">数据</button>
+    <button role="tab" data-tab="nl" aria-selected="false">语言</button>
     <button role="tab" data-tab="all" aria-selected="false" class="all">全部</button>
   </nav>
 
@@ -698,6 +732,64 @@
     页面每 1 秒向 <code>/api/latest</code> 与 <code>/api/history</code> 查询一次，数值全部来自服务端存储的板端上报记录，页面内没有任何写死的常量。
     标签页切到后台时自动暂停轮询，切回来立即补一次。停掉板端后数值会冻结，超过阈值即提示「未更新」。
   </p>
+  </section>
+
+  <!-- ================= 第4周：自然语言助手 =================
+       这是一个**受限**的语言入口，不是聊天框。
+       分工是硬性的（见 server/nl_agent.py 顶部注释）：
+         语言模型 → 只解析「意图 + 参数」
+         服务端   → 校验参数与设备范围
+         受限工具 → 读已有记录 / 请求重新采集（复用第1-2周已验证的接口）
+         回答     → 事实全部来自工具的真实返回
+       所以你在下面看到的每一条数值、时间、状态，都是查库或查指令状态机查出来的，
+       不是模型"说的"。 -->
+  <section class="panel" id="panel-nl">
+  <div class="chartbox">
+    <div class="charthead">
+      <h2>自然语言助手 · 一句话查数据或要设备重采</h2>
+      <div class="seg">
+        <span id="nlModel" class="tag" title="产品运行时模型（只做意图解析）">模型 —</span>
+        <span id="nlState" class="tag">就绪</span>
+      </div>
+    </div>
+
+    <div class="nlrow">
+      <input id="nlInput" type="text" autocomplete="off"
+             placeholder="例如：查看上次数据　/　重新采集一次　/　设备在哪个位置？">
+      <button id="nlSend" type="button">发送</button>
+    </div>
+
+    <div class="nlchips" id="nlChips">
+      <button type="button" data-q="查看上次数据">查看上次数据</button>
+      <button type="button" data-q="重新采集一次">重新采集一次</button>
+      <button type="button" data-q="采 20 个点，间隔 200 毫秒">采 20 个点</button>
+      <button type="button" data-q="看看数据吧">看看数据吧（含糊）</button>
+      <button type="button" data-q="设备现在在哪个位置？给个坐标">问坐标（越界）</button>
+    </div>
+
+    <div id="nlLog" class="nllog">
+      <div class="nlempty">还没有对话。说一句试试 —— 上面几个按钮可以直接点。</div>
+    </div>
+
+    <details class="explain">
+      <summary>这个入口为什么"受限"？模型到底做了什么？</summary>
+      <div class="body">
+        <p><b>模型只做一件事</b>：把这句话变成结构化的
+        <code>{intent, device_id, samples, interval_ms}</code>。它不查数据库、
+        不下发指令、也不写答案里的任何数字。</p>
+        <p><b>真正干活的是受限工具</b>，只有两个：
+        <code>read_latest</code>（读已有记录）和 <code>request_recollect</code>
+        （请求重新采集，复用第2周的指令状态机）。参数会被限幅，
+        设备必须是在库里真实出现过的。</p>
+        <p><b>回答里的每个事实都来自工具的真实返回</b>：数值来自 readings 表，
+        时间和状态来自命令表。所以"没有设备完成证据"的时候，
+        回答里不会出现"已采集成功"—— 这不是靠提示词求模型守规矩，
+        是服务端**不把成功这个结论交给模型写</b>。</p>
+        <p><b>密钥留在服务端</b>：语言服务的地址和密钥只从服务端环境变量读，
+        网页和接口响应里都拿不到。</p>
+      </div>
+    </details>
+  </div>
   </section>
 </div>
 
@@ -1751,7 +1843,7 @@ $('btnCsv').addEventListener('click', () => {
  *   · 刷新 / 分享链接能直接落在同一个分区（验收时可以直接给 #help）；
  *   · 浏览器前进后退键可用。
  */
-const TABS = ['overview', 'command', 'help', 'camera', 'data', 'all'];
+const TABS = ['overview', 'command', 'help', 'camera', 'data', 'nl', 'all'];
 
 function applyTab(name) {
   if (TABS.indexOf(name) < 0) name = 'overview';
@@ -1796,6 +1888,139 @@ document.querySelectorAll('.tabs button[data-tab]').forEach(b => {
 })();
 
 window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || 'overview'));
+
+/* ================= 第4周：自然语言助手 =================
+ *
+ * 这个面板刻意把「模型判成了什么」「调了哪个工具」「证据是什么」都显示出来。
+ * 原因：自然语言界面最大的风险是**说得好听但没真做事**。
+ * 只显示一段回答的话，用户没法判断它是查了库还是编的；
+ * 把意图、工具名、状态都摆出来，才看得出它是受限的。
+ */
+(function mountNL() {
+  const log = document.getElementById('nlLog');
+  const input = document.getElementById('nlInput');
+  const btn = document.getElementById('nlSend');
+  const state = document.getElementById('nlState');
+  const modelTag = document.getElementById('nlModel');
+  if (!log || !input || !btn) return;
+
+  let busy = false;
+
+  function addMsg(who, body, meta) {
+    const empty = log.querySelector('.nlempty');
+    if (empty) empty.remove();
+    const box = document.createElement('div');
+    box.className = 'nlmsg ' + who;
+    const w = document.createElement('div');
+    w.className = 'who';
+    w.textContent = who === 'me' ? '我' : '助手';
+    const b = document.createElement('div');
+    b.className = 'body';
+    b.textContent = body;          // 用 textContent —— 模型的输出是外部数据，
+                                    // 绝不拼进 innerHTML（那是 XSS 的入口）
+    box.appendChild(w);
+    box.appendChild(b);
+    if (meta && meta.length) {
+      const m = document.createElement('div');
+      m.className = 'nlmeta';
+      meta.forEach(t => {
+        const s = document.createElement('span');
+        s.textContent = t.t;
+        if (t.k) s.className = t.k;
+        m.appendChild(s);
+      });
+      box.appendChild(m);
+    }
+    log.appendChild(box);
+    log.scrollTop = log.scrollHeight;
+    return box;
+  }
+
+  async function send(text) {
+    text = (text || '').trim();
+    if (!text || busy) return;
+    busy = true;
+    btn.disabled = true;
+    state.textContent = '处理中…';
+    state.className = 'tag';
+    addMsg('me', text);
+    const wait = addMsg('bot', '（模型正在解析意图…）');
+    wait.querySelector('.body').textContent = '（模型正在解析意图…）';
+
+    try {
+      const r = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text })
+      });
+      const d = await r.json();
+      const meta = [];
+      if (d.intent) meta.push({ t: '意图 ' + d.intent, k: d.intent === 'unclear' || d.intent === 'unsupported' ? 'bad' : 'ok' });
+      if (d.tool) meta.push({ t: '工具 ' + d.tool, k: 'ok' });
+      if (d.error) meta.push({ t: '未执行 ' + d.error, k: 'bad' });
+      if (d.elapsed_s !== undefined) meta.push({ t: d.elapsed_s + ' 秒' });
+      const tr = d.tool_result || {};
+      if (tr.status) meta.push({ t: '状态 ' + tr.status, k: tr.status === 'done' ? 'ok' : 'bad' });
+      if (tr.samples_in_db !== undefined && tr.samples_in_db !== null) {
+        meta.push({ t: '新观测 ' + tr.samples_in_db + ' 条',
+                    k: tr.samples_in_db > 0 ? 'ok' : 'bad' });
+      }
+      if (d.device_id) meta.push({ t: '设备 ' + d.device_id });
+      wait.querySelector('.body').textContent = d.reply || '（没有回答）';
+      const m = wait.querySelector('.nlmeta');
+      if (m) m.remove();
+      if (meta.length) {
+        const mm = document.createElement('div');
+        mm.className = 'nlmeta';
+        meta.forEach(t => {
+          const s = document.createElement('span');
+          s.textContent = t.t;
+          if (t.k) s.className = t.k;
+          mm.appendChild(s);
+        });
+        wait.appendChild(mm);
+      }
+      state.textContent = d.ok ? '完成' : '已拒绝';
+      state.className = 'tag ' + (d.ok ? '' : '');
+    } catch (e) {
+      wait.querySelector('.body').textContent = '请求失败：' + String(e);
+      state.textContent = '出错';
+    } finally {
+      busy = false;
+      btn.disabled = false;
+      input.focus();
+    }
+  }
+
+  btn.addEventListener('click', () => {
+    const t = input.value;
+    input.value = '';
+    send(t);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.isComposing) {
+      e.preventDefault();
+      const t = input.value;
+      input.value = '';
+      send(t);
+    }
+  });
+  document.querySelectorAll('#nlChips button[data-q]').forEach(b => {
+    b.addEventListener('click', () => send(b.dataset.q));
+  });
+
+  /* 显示当前用的是哪个运行时模型（只有主机名和模型名，没有密钥） */
+  fetch('/api/agent/info')
+    .then(r => r.json())
+    .then(d => {
+      if (d.llm && d.llm.model) {
+        modelTag.textContent = '模型 ' + d.llm.model;
+        modelTag.title = '产品运行时模型（只做意图解析）· '
+                       + d.llm.protocol + ' @ ' + d.llm.host;
+      }
+    })
+    .catch(() => {});
+})();
 
 renderLegend();
 applyTab(location.hash.slice(1) || 'overview');

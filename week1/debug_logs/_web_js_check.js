@@ -1,5 +1,22 @@
 
 const $ = (id) => document.getElementById(id);
+
+/* 把"多少秒前"换成人话。
+ *
+ * 为什么必须换：求助列表默认显示最近几条，而它们可能是几天前的（设备不是一直在用）。
+ * 改版前直接写 age_seconds.toFixed(0) + ' 秒前'，9/28 的事件在 10 月打开就显示
+ * 「2155226 秒前」—— 没人读得出来这是 25 天。这个数字是真的，但不可读等于没有。
+ *
+ * 10 秒以内保留一位小数（看画面新鲜度时秒级有意义），超过就取整。 */
+function humanAge(sec) {
+  if (sec === null || sec === undefined || !isFinite(sec)) return '—';
+  if (sec < 0) sec = 0;
+  if (sec < 10) return sec.toFixed(1) + ' 秒前';
+  if (sec < 60) return Math.round(sec) + ' 秒前';
+  if (sec < 3600) return Math.round(sec / 60) + ' 分钟前';
+  if (sec < 86400) return Math.round(sec / 3600) + ' 小时前';
+  return Math.round(sec / 86400) + ' 天前';
+}
 const fmt = (v, n = 3) => (v === null || v === undefined) ? '—' : Number(v).toFixed(n);
 const mag = (x, y, z) => Math.sqrt(x * x + y * y + z * z);
 /* 字节 → MB，保留 2 位小数；null/undefined 显示为"—"而不是 0 */
@@ -86,7 +103,7 @@ const CAM_HEARTBEAT = CAM_MODE === 'server' ? API_BASE + '/api/camera/status' : 
         const j = JSON.parse(body);
         const age = j.last_frame_age;
         const flowing = j.state === 'streaming' && age !== null && age < 3;
-        const note = age === null ? '尚无画面' : ' ' + age.toFixed(1) + ' 秒前的帧';
+        const note = age === null ? '尚无画面' : ' ' + humanAge(age) + '的帧';
         return { alive: flowing, note: note };
       } catch (e) { return { alive: false, note: '状态解析失败' }; }
     }
@@ -504,10 +521,20 @@ function renderHelp(d) {
     return;
   }
   const newest = evs[0];
-  const shown = HELP_SHOW_ALL ? evs : evs.slice(0, HELP_VISIBLE);
+  /* 默认把「已取消」排到后面。
+   *
+   * 为什么：设备不是一直在用，列表里常常整屏都是几天前被取消的测试事件。
+   * 第一次打开的人会以为"这功能一直被取消"，而真正该看的「待回应」被挤到看不见。
+   * 用稳定排序（现代引擎保证），组内仍按时间倒序，不改变事件的时间线。 */
+  const cancelled = evs.filter(e => e.state === 'cancelled').length;
+  const ordered = evs.slice().sort(
+    (a, b) => (a.state === 'cancelled' ? 1 : 0) - (b.state === 'cancelled' ? 1 : 0));
+  const shown = HELP_SHOW_ALL ? ordered : ordered.slice(0, HELP_VISIBLE);
   $('helpCount').textContent =
-    '待回应 ' + (counts.open || 0) + ' · 显示 ' + shown.length + '/' + evs.length + ' 条'
-    + ' · 最新 ' + (newest.age_seconds === null ? '—' : newest.age_seconds.toFixed(0)) + ' 秒前';
+    (counts.open ? '待回应 ' + counts.open : '当前没有待回应的求助')
+    + ' · 共 ' + evs.length + ' 条' + (cancelled ? '（已取消 ' + cancelled + '）' : '')
+    + ' · 显示 ' + shown.length + ' 条'
+    + ' · 最新 ' + humanAge(newest.age_seconds);
 
   /* 把"有待回应的求助"同步到顶部标签上的徽标。
    * 这一步是分区之后**必须**加的：面板藏起来了，信号不能跟着藏 ——
@@ -531,10 +558,12 @@ function renderHelp(d) {
       ? '（当时读不到 IMU —— 求助照发，不因传感器故障被吞掉）'
       : `|a| ≈ ${(stroke.norm_g ?? 0).toFixed(3)} g`;
 
-    /* 三个徽标，三个独立事实。第三级只有真的有人点过才点亮。 */
-    const badge = (on, label, detail) =>
+    /* 三个徽标，三个独立事实。第三级只有真的有人点过才点亮。
+     * offText 单独给：③ 不亮的时候写「—」，读起来像"不适用"或"没数据"，
+     * 而它真正的意思是"还没有人回应" —— 这件事必须说出来，不能靠猜。 */
+    const badge = (on, label, detail, offText) =>
       `<span class="lv ${on ? 'on' : 'off'}" title="${detail}">` +
-      `<span class="t">${label}</span> ${on ? '✓' : '—'}</span>`;
+      `<span class="t">${label}</span> ${on ? '✓' : (offText || '—')}</span>`;
 
     const canReply = (st === 'open');
     const canCancel = (st !== 'cancelled');
@@ -543,7 +572,7 @@ function renderHelp(d) {
         `<span class="key">${e.button || '?'}</span>` +
         `<span><b>${stText}</b></span>` +
         `<span>${e.created_at || ''}</span>` +
-        `<span>${e.age_seconds === null ? '' : e.age_seconds.toFixed(0) + ' 秒前'}</span>` +
+        `<span>${humanAge(e.age_seconds)}</span>` +
         (fresh ? `<span class="tag cmd">刚发生</span>` : '') +
         (e.simulated ? `<span class="sim" title="模拟/演练数据，不是真机按键">模拟</span>` : '') +
         (e.button && stroke.press_delay_ms !== undefined
@@ -557,7 +586,8 @@ function renderHelp(d) {
         badge(lv.server && lv.server.done, '② VPS 接收',
               (lv.server || {}).note + '｜证据：' + (lv.server || {}).evidence) +
         badge(lv.viewer && lv.viewer.done, '③ 查看者回应',
-              (lv.viewer || {}).note + '｜证据：' + (lv.viewer || {}).evidence) +
+              (lv.viewer || {}).note + '｜证据：' + (lv.viewer || {}).evidence,
+              '未回应') +
       `</div>` +
       (e.state === 'cancelled'
         ? `<div class="snap">已取消${e.cancel_reason ? '：' + e.cancel_reason : ''}` +
@@ -713,8 +743,7 @@ async function tick() {
     PAUSED = !!lr.paused;
     updatePauseUI();
     const seen = lr.device_seen_seconds;
-    const seenTxt = (seen === null || seen === undefined)
-      ? '—' : seen.toFixed(0) + ' 秒前';
+    const seenTxt = (seen === null || seen === undefined) ? '—' : humanAge(seen);
     if (PAUSED) {
       setPill('warn', '已暂停周期上报 · 心跳 ' + seenTxt);
     } else if (r.stale && lr.last_request_kind === 'poll'

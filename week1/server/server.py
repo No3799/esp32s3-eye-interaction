@@ -54,6 +54,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from camera_relay import CameraRelay, CLIENT_BOUNDARY, FRAME_BOUNDARY
 from commands import CommandStore
 from help import HelpStore
+from nl_agent import LLMClient, NLAgent
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -228,6 +229,18 @@ def latest_device_ip() -> str:
 RELAY = CameraRelay(latest_ip_fn=latest_device_ip)
 
 
+# ---- 第4周：自然语言助手（产品运行时模型 + 受限工具）----
+# LLM 的地址/密钥只从**服务端环境变量**读（NL_LLM_BASE_URL / NL_LLM_API_KEY /
+# NL_LLM_MODEL）。它们不会出现在任何 API 响应里，网页也拿不到 ——
+# 密钥留在服务端是任务卡「准备与协同」明确要求的。
+#
+# ⚠️ 这里的分工是硬性的：模型只解析「意图+参数」，真正的读取和下发由
+#    nl_agent 里的受限工具做，回答里的事实全部来自工具的真实返回。
+LLM = LLMClient()
+AGENT = NLAgent(LLM, CONN, LOCK, COMMANDS, DEVICE_STATE,
+                stale_seconds=STALE_SECONDS)
+
+
 def row_to_dict(row: sqlite3.Row) -> dict:
     d = dict(row)
     d["server_time"] = time.strftime(
@@ -284,6 +297,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_buttons(qs)
         if path == "/api/help":
             return self.api_help_list(qs)
+        if path == "/api/agent/info":
+            # 只读信息：告诉前端用的是哪个运行时模型。
+            # 只回主机名 / 模型名 / 是否配了密钥（布尔），**不回密钥本身**。
+            return self._send_json(200, {
+                "llm": LLM.public_info(),
+                "reply_style": AGENT.reply_style,
+                "tools": ["read_latest", "request_recollect"],
+                "note": "模型只解析意图与参数；读取与下发由受限工具执行。",
+            })
         if path.startswith("/api/help/"):
             eid = path[len("/api/help/"):]
             ev = HELP.get(eid)
@@ -685,6 +707,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_help_record()
         if path.startswith("/api/help/") and path.endswith("/reply"):
             return self.api_help_reply(path[len("/api/help/"):-len("/reply")])
+        if path == "/api/ask":
+            return self.api_ask()
         if path != "/api/data":
             return self._send_json(404, {"error": "not found"})
 
@@ -989,6 +1013,43 @@ class Handler(BaseHTTPRequestHandler):
             "events": [self._help_public(r) for r in rows],
         })
 
+    def api_ask(self):
+        """POST /api/ask —— 第4周的自然语言入口。
+
+        body: {"text": "查看上次数据"}
+
+        这是一条**受限**的语言入口：
+          · 语言模型只负责把话解析成「意图 + 参数」，不查库、不下发、不作答
+          · 真正的动作由两个受限工具执行（读已有记录 / 请求重新采集）
+          · 回答里的来源、时间、状态全部来自工具的真实返回
+          · 没有设备完成证据时，回答里不会出现「已采集成功」
+        """
+        body, code = self._read_json_body()
+        if code:
+            return code
+        text = str(body.get("text") or "").strip()
+        if not text:
+            return self._send_json(400, {"error": "text required"})
+
+        try:
+            result = AGENT.handle(text)
+        except Exception as e:
+            # 兜底：助手内部出错时**不能**假装成功，也不能静默
+            print(f"[ask] 助手异常: {e}")
+            return self._send_json(500, {
+                "ok": False,
+                "error": "agent_exception",
+                "detail": str(e)[:300],
+                "reply": "助手内部出错，没有执行任何采集动作。",
+            })
+
+        # 注意：**不要**把 llm 的 base_url / api_key 之类回传。
+        # AGENT.public_info() 只暴露主机名、模型名、是否有密钥。
+        print(f"[ask] 「{text[:40]}」→ intent={result.get('intent')} "
+              f"tool={result.get('tool')} ok={result.get('ok')} "
+              f"{result.get('elapsed_s')}s")
+        return self._send_json(200, result)
+
     def api_help_reply(self, eid: str):
         """POST /api/help/<id>/reply —— 查看者「回应」或「取消」。
 
@@ -1155,6 +1216,9 @@ def main():
     args = ap.parse_args()
 
     MAX_ROWS = max(1, args.max_rows)
+    # --stale 改的是全局阈值，自然语言助手也用同一个阈值判断"数据过期"，
+    # 不然会出现「网页说数据是新的、助手说数据过期了」这种自相矛盾。
+    AGENT.stale_seconds = args.stale
     STALE_SECONDS = args.stale
     FAULT_ENABLED = bool(args.fault_injection)
     if args.camera_url:

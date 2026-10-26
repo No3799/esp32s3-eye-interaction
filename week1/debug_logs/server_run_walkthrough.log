@@ -1,0 +1,1167 @@
+[week1] 服务已启动
+[week1]   本机访问  : http://127.0.0.1:8000
+[week1]   局域网访问: http://10.1.41.18:8000   ← 板子靠这个地址上报；同一 WiFi 下的手机/电脑也能用它打开页面
+[week1] 数据库: D:\aijiaohu\week1\data\readings.db
+[week1] 未更新阈值: 5.0 秒
+[week1] 记录上限: 200000 条（超出自动删除最早的）
+[week1] 摄像头中转: http://127.0.0.1:8000/api/camera（无需知道板子 IP）
+[week1] 下行指令: POST http://127.0.0.1:8000/api/command（状态查询 /api/command/<id>）
+[week1] 教学求助: POST http://127.0.0.1:8000/api/help（回应/取消 /api/help/<id>/reply）
+[week1] ⓘ 教学求助只连本组教学接收端：不打电话、不发短信、不推第三方服务
+[week1] Ctrl+C 停止
+10.1.41.160 - - [23/Oct/2026 09:15:57] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:04] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:06] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:09] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:10] "GET /api/devices HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:10] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:10] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:10] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:11] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:11] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:11] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:12] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:12] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:12] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:12] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:13] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:13] "GET /api/camera/status?nocache=1792718173662 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:13] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:13] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:14] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:14] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:14] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:14] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:15] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:15] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:16] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:16] "GET /api/camera/status?nocache=1792718176654 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:16] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:16] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:16] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:17] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:17] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:17] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:18] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:18] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:18] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:19] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:20] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:21] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:23] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:24] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:25] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:25] "GET /api/camera?nocache=1792718170650 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 65275)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 257, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:16:26] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:27] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:28] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:29] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:31] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:16:31] "GET /api/camera?nocache=1792718176970 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 50088)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 256, in _send
+    self.end_headers()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:16:32] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:33] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:34] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:36] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:38] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:40] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:41] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:42] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:44] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:45] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:46] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:47] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:50] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:52] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:53] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:55] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:56] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:58] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:16:59] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:00] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:02] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:03] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:04] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:06] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:07] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:09] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:10] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:11] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:13] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:15] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:16] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:18] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:19] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:20] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:22] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:23] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:25] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:27] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:28] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:30] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:32] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:34] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:35] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:37] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:37] "GET /api/devices HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:37] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:37] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:37] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:38] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:38] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:39] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:39] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:39] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:39] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:40] "GET /api/camera/status?nocache=1792718260349 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:40] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:40] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:41] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:41] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:41] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:42] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:42] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:43] "GET /api/camera/status?nocache=1792718263343 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:43] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:43] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:43] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:44] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:44] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:44] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:44] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:45] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:45] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:45] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:47] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:48] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:50] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:51] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:52] "GET /api/camera?nocache=1792718257336 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 64649)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 257, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+127.0.0.1 - - [23/Oct/2026 09:17:52] "GET /api/devices HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:52] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:52] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:52] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:53] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:53] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:53] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:54] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:54] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:54] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:54] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:55] "GET /api/camera/status?nocache=1792718275771 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:55] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:55] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:56] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:56] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:56] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:56] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:57] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:57] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:58] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:58] "GET /api/camera?nocache=1792718263650 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 53938)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 256, in _send
+    self.end_headers()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+----------------------------------------
+127.0.0.1 - - [23/Oct/2026 09:17:58] "GET /api/camera/status?nocache=1792718278785 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:58] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:58] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:58] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:17:59] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:59] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:17:59] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:00] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:00] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:00] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:00] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:02] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:07] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:07] "GET /api/camera?nocache=1792718272768 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 61637)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 257, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:18:08] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:08] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:10] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:13] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:14] "GET /api/camera?nocache=1792718279099 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 62510)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 256, in _send
+    self.end_headers()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:18:15] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:16] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:18] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:20] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:22] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:23] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:25] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:26] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:28] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:30] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:31] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:33] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:34] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:36] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:38] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:40] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:42] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:43] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:44] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:46] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:47] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:48] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:50] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:50] "GET /api/devices HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:51] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:51] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:51] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:51] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:52] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:52] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:53] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:53] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:53] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:53] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:54] "GET /api/camera/status?nocache=1792718333998 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:54] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:54] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:55] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:55] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:55] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:55] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:56] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:56] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:56] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:56] "GET /api/camera/status?nocache=1792718336984 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:57] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:57] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:57] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:57] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:58] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:58] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:58] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:59] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:59] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:18:59] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:18:59] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:00] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:01] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:02] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:04] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:05] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:06] "GET /api/camera?nocache=1792718330982 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 54076)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 257, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:19:06] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:07] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:08] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:09] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:10] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:12] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:12] "GET /api/camera?nocache=1792718337288 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 63815)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 256, in _send
+    self.end_headers()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:19:13] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:14] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:15] "GET /api/devices HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:15] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:15] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:15] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:15] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:16] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:16] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:16] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:17] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:17] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:17] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:17] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:18] "GET /api/camera/status?nocache=1792718358260 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:18] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:18] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:18] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:19] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:19] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:19] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:19] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:20] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:20] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:21] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:21] "GET /api/camera/status?nocache=1792718361247 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:21] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:21] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:21] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:22] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:22] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:22] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:23] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:23] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:23] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:23] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:24] "GET /api/camera/status?nocache=1792718364257 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:24] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:24] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:24] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:25] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:25] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:25] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:25] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:26] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:26] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:26] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:27] "GET /api/camera/status?nocache=1792718367257 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:27] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:27] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:27] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:27] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:28] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:30] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:30] "GET /api/camera?nocache=1792718355246 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 51889)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 257, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:19:31] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:32] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:33] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:34] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:35] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:36] "GET /api/camera?nocache=1792718361562 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 63351)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 257, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:19:36] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:37] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:38] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:40] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:41] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:42] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:43] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:44] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:46] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:47] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:48] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:49] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:50] "GET /api/devices HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:50] "GET /api/latest HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:50] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:50] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:50] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:51] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:51] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:51] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:52] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:52] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:52] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:52] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:53] "GET /api/camera/status?nocache=1792718393378 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:53] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:53] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:54] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:54] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:54] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:54] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:55] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:55] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:55] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:56] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:56] "GET /api/camera/status?nocache=1792718396377 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:56] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:56] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:56] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:57] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:57] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:57] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:58] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:58] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:58] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:58] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:59] "GET /api/camera/status?nocache=1792718399386 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:59] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:19:59] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:19:59] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:00] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:00] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:00] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:00] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:01] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:01] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:01] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:02] "GET /api/camera/status?nocache=1792718402386 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:02] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:02] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:02] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:03] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:04] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:05] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:05] "GET /api/camera?nocache=1792718390376 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 61108)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 257, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:20:06] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:07] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:08] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:09] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:10] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:11] "GET /api/camera?nocache=1792718396680 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 57987)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 257, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:20:12] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:13] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:14] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:15] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:16] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:17] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:18] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:19] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:21] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:22] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:23] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:24] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:25] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:26] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:27] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:28] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:29] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:31] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:32] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:33] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:34] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:35] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:36] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:37] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:39] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:40] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:41] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:42] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:44] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:45] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:46] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:47] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:48] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:49] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:50] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:51] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:53] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:53] "GET /api/devices HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:53] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:53] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:53] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:56] "GET /api/camera/status?nocache=1792718456893 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/latest HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:57] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:57] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:57] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:58] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:58] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:58] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:58] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:20:59] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:59] "GET /api/camera/status?nocache=1792718459886 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:59] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:20:59] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:00] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:00] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:00] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:00] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:01] "GET /api/latest HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:01] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:01] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:03] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:04] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:05] "GET /api/devices HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:05] "GET /api/latest HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:05] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:05] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:05] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:06] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:06] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:06] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:07] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:07] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:07] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:07] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:08] "GET /api/camera/status?nocache=1792718468259 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:08] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:08] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:08] "GET /api/camera?nocache=1792718453879 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 54487)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 257, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:21:08] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:09] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:09] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:09] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:10] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:10] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:10] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:11] "GET /api/camera/status?nocache=1792718471259 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:11] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:11] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:11] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:11] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:12] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:12] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:12] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:12] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:13] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:13] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:13] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:15] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:15] "GET /api/camera?nocache=1792718460267 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 58435)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 256, in _send
+    self.end_headers()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:21:16] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:17] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:18] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:19] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:20] "GET /api/camera?nocache=1792718465252 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 53279)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 257, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+10.1.41.160 - - [23/Oct/2026 09:21:20] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:21] "GET /api/devices HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:21] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:21] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:21] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:21] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:22] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:22] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:22] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:23] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:23] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:23] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:24] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:24] "GET /api/camera/status?nocache=1792718484723 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:24] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:24] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:25] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:25] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:25] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:25] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:26] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:26] "GET /api/camera?nocache=1792718471573 HTTP/1.1" 503 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 57828)
+Traceback (most recent call last):
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 447, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 435, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 278, in do_GET
+    return self.api_camera()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\aijiaohu\week1\server\server.py", line 640, in api_camera
+    return self._send_json(503, {"error": "摄像头画面暂不可用", "status": st})
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 260, in _send_json
+    self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               "application/json; charset=utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\aijiaohu\week1\server\server.py", line 256, in _send
+    self.end_headers()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 549, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\http\server.py", line 553, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\.workbuddy\binaries\python\versions\3.13.12\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+----------------------------------------
+127.0.0.1 - - [23/Oct/2026 09:21:26] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:26] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:27] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:27] "GET /api/camera/status?nocache=1792718487719 HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:27] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:27] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:27] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:28] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:28] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:28] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:29] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:29] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:29] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:29] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:30] "POST /api/data HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:32] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:32] "GET /api/devices HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:32] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:32] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:32] "GET /api/history?minutes=1&limit=180&device_id=team01-esp32s3eye HTTP/1.1" 200 -
+10.1.41.160 - - [23/Oct/2026 09:21:33] "POST /api/data HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:33] "GET /api/latest HTTP/1.1" 200 -
+127.0.0.1 - - [23/Oct/2026 09:21:33] "GET /api/help?limit=12&device_id=team01-esp32s3eye HTTP/1.1" 200 -
