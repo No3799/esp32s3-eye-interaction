@@ -39,6 +39,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import socket
 import time
 import urllib.error
 import urllib.request
@@ -68,6 +69,51 @@ UNSUPPORTED_HINTS = (
     "位置", "坐标", "经度", "纬度", "定位", "在哪", "哪里", "gps", "GPS",
     "北斗", "经纬", "定位信息", "什么位置",
 )
+
+
+# ---------------------------------------------------------------------------
+# 模型侧失败的归类
+# ---------------------------------------------------------------------------
+def classify_llm_error(e: BaseException) -> str:
+    """把"模型没给出意图"拆成四类可操作的故障。
+
+    为什么要拆：这四类的修法完全不同 ——
+      · model_not_found   → 服务在跑但模型没加载（重启服务 / 查 /api/tags）
+      · model_unreachable → 服务没起 / 端口不通 / 超时（起服务、查防火墙）
+      · model_auth        → 密钥或权限不对（换 key，服务端问题，不是提示词问题）
+      · invalid_json      → 服务好好的，是模型输出不合法（改提示词 / 换模型）
+    混成一句"服务不可用"，人会去重启一个本来正常的服务。
+
+    **判据以异常类型和 HTTP 状态码为主，文本只作兜底**：
+    中文 Windows 上连接被拒的报错是「由于目标计算机积极拒绝，无法连接。」，
+    纯英文关键词匹配（refused）会漏掉 —— 这是实测踩出来的，不是假设。
+    """
+    code = getattr(e, "code", None)
+    if isinstance(code, int):
+        if code == 404:
+            return "model_not_found"
+        if code in (401, 403):
+            return "model_auth"
+        return "model_error"
+
+    reason = getattr(e, "reason", None)
+    refused_types = (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError)
+    if isinstance(e, refused_types) or isinstance(reason, refused_types):
+        return "model_unreachable"
+    if isinstance(e, (TimeoutError, socket.timeout)) or isinstance(reason, (TimeoutError, socket.timeout)):
+        return "model_unreachable"
+
+    txt = "%s %s" % (e, reason if reason is not None else "")
+    low = txt.lower()
+    if "10061" in low or "refused" in low or "拒绝" in txt:
+        return "model_unreachable"
+    if "timed out" in low or "超时" in txt:
+        return "model_unreachable"
+    if "404" in low or "not found" in low:
+        return "model_not_found"
+    if "json" in low:
+        return "invalid_json"
+    return "model_error"
 
 
 # ---------------------------------------------------------------------------
@@ -578,19 +624,43 @@ class NLAgent:
             parsed = self.llm.chat_json(INTENT_SYSTEM, "用户说：" + text)
             trace.append({"step": "intent_parse", "ok": True, "raw": parsed})
         except Exception as e:
-            # 备用路径：模型服务异常时，**不猜**意图，直接说明并给结构化样例。
-            trace.append({"step": "intent_parse", "ok": False, "error": str(e)[:200]})
+            # 备用路径：模型侧失败时**不猜**意图、**不执行任何动作**。
+            # 这里必须再分一层：四种失败的修法完全不同，混成一句"服务不可用"
+            # 会让人去重启服务，而真正的原因可能是模型输出不是 JSON。
+            err = str(e)[:200]
+            kind = classify_llm_error(e)
+
+            trace.append({"step": "intent_parse", "ok": False,
+                          "error": err, "error_kind": kind})
+
+            # 结构化样例：给**具体实例**而不是占位符。占位符只能说明字段名，
+            # 没法直接拿去比对；实例可以逐字段对照模型的实际输出。
+            sample = {"intent": "unclear", "device_id": "", "samples": None,
+                      "interval_ms": None,
+                      "reason": "模型侧失败（%s），未解析出意图" % kind}
+            hint = {
+                "model_not_found": "服务在跑，但模型没加载。先看 /api/tags 是否为空；"
+                                   "为空就用 week1/启动语言服务.bat 重启（显式指定 OLLAMA_MODELS）。",
+                "model_unreachable": "模型服务没起来。检查 11434 端口是否在监听，必要时启动服务。",
+                "invalid_json": "服务是好的，模型输出不是合法 JSON。看 trace 里的原文，"
+                                "多半要收窄提示词或换更稳的模型。",
+                "model_auth": "服务连上了但拒绝授权。检查 NL_LLM_API_KEY 是否有效。",
+                "model_error": "看 trace 里的原始报错。",
+            }[kind]
+
             return {
                 "ok": False,
                 "error": "llm_unavailable",
+                "error_kind": kind,
+                # 机器可读的"什么都没做"凭据：验收时可以断言这个列表为空
+                "actions_taken": [],
+                "parse_sample": sample,
                 "reply": ("语言模型服务暂时不可用，我没法判断这句话的意图，"
-                          "所以没有执行任何采集动作。\n\n"
-                          "结构化样例（用于定位解析问题）：\n"
-                          + json.dumps({"intent": "query_latest|request_recollect|unsupported|unclear",
-                                        "device_id": "<设备名或空串>",
-                                        "samples": None, "interval_ms": None,
-                                        "reason": "<一句话理由>"},
-                                       ensure_ascii=False, indent=2)),
+                          "所以**没有执行任何采集动作**（也没有下发任何指令）。\n\n"
+                          "失败类别：%s\n"
+                          "排查方向：%s\n\n"
+                          "结构化样例（用于定位解析问题）：\n%s"
+                          % (kind, hint, json.dumps(sample, ensure_ascii=False, indent=2))),
                 "llm": self.llm.public_info(),
                 "trace": trace,
             }
