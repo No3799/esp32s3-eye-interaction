@@ -37,19 +37,21 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
+    no_mic = "--no-mic" in sys.argv
     base = "http://127.0.0.1:8000/"
     browser = bt.find_browser()
     profile = tempfile.mkdtemp(prefix="voice_")
-    port = 9488
+    port = 9488 if not no_mic else 9489
     args = [browser, "--headless=new", f"--remote-debugging-port={port}",
             f"--user-data-dir={profile}", "--no-first-run", "--disable-gpu",
-            "--hide-scrollbars", "--window-size=1280,1000",
-            # 假麦克风：让 getUserMedia 拿得到一条持续音，不需要真人开口
-            "--use-fake-device-for-media-stream",
-            "--use-fake-ui-for-media-stream",
-            # 允许无头环境里的自动播放（播报用的是 speechSynthesis，这条不强制但无害）
-            "--autoplay-policy=no-user-gesture-required",
-            base + "#nl"]
+            "--hide-scrollbars", "--window-size=1280,1000"]
+    if no_mic:
+        # 不给假麦克风：无头浏览器此时 enumerates 不到任何输入设备，
+        # getUserMedia 抛 NotFoundError —— 正好用来验证"错误的说法对不对"。
+        args.append("--deny-permission-prompts")
+    else:
+        args += ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"]
+    args += ["--autoplay-policy=no-user-gesture-required", base + "#nl"]
     p = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     ok_n = bad_n = 0
 
@@ -82,6 +84,21 @@ def main():
         check("状态标签可见", js(ws, """(()=>{const e=document.getElementById('nlVoiceState');
             if(!e)return false; const r=e.getBoundingClientRect(); return r.width>0&&r.height>0;})()"""))
         check("浏览器支持 speechSynthesis", js(ws, "'speechSynthesis' in window") is True)
+
+        if no_mic:
+            js(ws, "document.getElementById('nlMic').click(); 1")
+            time.sleep(1.5)
+            msg = js(ws, "document.getElementById('nlVoiceState').innerText") or ""
+            print("    无麦克风时的提示:", msg)
+            check("无麦克风：提示说清了原因", "没有可用的麦克风" in msg, msg)
+            check("无麦克风：给出了可走的路", "选录音文件" in msg, msg)
+            check("无麦克风：按钮没有卡在「结束录音」",
+                  js(ws, "document.getElementById('nlMic').innerText").strip() == "开始录音",
+                  js(ws, "document.getElementById('nlMic').innerText"))
+            ws.close()
+            print()
+            print("  共 %d 项，通过 %d，未通过 %d" % (ok_n + bad_n, ok_n, bad_n))
+            return 0 if bad_n == 0 else 1
 
         # 点「开始录音」
         js(ws, "document.getElementById('nlMic').click(); 1")

@@ -89,6 +89,7 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "camera_stream.h"
+#include "mic_record.h"                  /* 第5周：板载麦克风录音 */
 
 /* ============ 需要按实际情况修改 ============ */
 #define WIFI_SSID      "431"
@@ -99,6 +100,7 @@
 #define PATH_DATA      "/api/data"      /* 正常上报：写一条传感记录 + 搭车取指令 */
 #define PATH_POLL      "/api/poll"      /* 暂停期间的心跳：不写数据，只为取指令 */
 #define PATH_HELP      "/api/help"      /* 教学求助测试消息（不是采集数据） */
+#define PATH_AUDIO     "/api/audio"     /* 第5周：板载麦克风录的一段 WAV */
 
 /* ============ 静态地址兜底（网络异常时的自保） ============
  *
@@ -171,6 +173,10 @@
 #define BTN_STABLE_TICKS   3               /* 连续 3 次判读一致才算按下（消抖） */
 
 #define LED_GPIO           GPIO_NUM_3      /* 绿色 Module Power LED：开漏、拉低点亮 */
+
+/* 第5周：录音键用 BOOT（GPIO0）。四个用户键的语义已被第3周的求助占用，
+ * 再往上叠"长按录音"会改变求助的触发时机，破坏已经验过的证据链。 */
+#define BOOT_BTN_GPIO      GPIO_NUM_0
 
 /* 按键电压，取自原理图标注值。判读用"就近归并"：落在相邻两档中点之间
  * 就算该档。各档间隔最小 430mV，中点判决留出的余量足以容忍电阻误差。 */
@@ -436,6 +442,69 @@ static esp_err_t http_post_json(const char *path, const char *json,
     }
     esp_http_client_close(client);
     esp_http_client_cleanup(client);
+    return ESP_OK;
+}
+
+/* ---- 第5周：上传一段二进制（WAV）----
+ *
+ * 与 http_post_json 的区别只有两点，但都必须说清楚：
+ *   1) Content-Type 是 audio/wav，不是 application/json；
+ *   2) 超时给 15 秒（JSON 只给 2 秒）。因为服务端收到这段音频后要跑一遍
+ *      离线识别再回答，2 秒不够 —— 用 JSON 的超时会把"正在识别"误判成"发送失败"。
+ *      代价是：这条路径最长会把主循环占住 15 秒。只在录音结束时走一次，可以接受。
+ */
+static esp_err_t http_post_binary(const char *path, const uint8_t *data, size_t len,
+                                  char *resp, size_t resp_sz)
+{
+    if (resp && resp_sz) {
+        resp[0] = '\0';
+    }
+    char url[96];
+    snprintf(url, sizeof(url), "%s%s", SERVER_BASE, path);
+    esp_http_client_config_t cfg = {
+        .url = url,
+        .method = HTTP_METHOD_POST,
+        .timeout_ms = 15000,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&cfg);
+    if (client == NULL) {
+        return ESP_FAIL;
+    }
+    esp_http_client_set_header(client, "Content-Type", "audio/wav");
+
+    esp_err_t err = esp_http_client_open(client, len);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "音频上传连接失败: %s", esp_err_to_name(err));
+        esp_http_client_cleanup(client);
+        return err;
+    }
+    int written = esp_http_client_write(client, (const char *)data, len);
+    if (written != (int)len) {
+        ESP_LOGW(TAG, "音频发送不完整 (%d/%d)", written, (int)len);
+        esp_http_client_close(client);
+        esp_http_client_cleanup(client);
+        return ESP_FAIL;
+    }
+
+    int content_len = esp_http_client_fetch_headers(client);
+    int status = esp_http_client_get_status_code(client);
+    int n = 0;
+    if (resp && resp_sz > 1 && content_len > 0) {
+        while (n < (int)resp_sz - 1) {
+            int r = esp_http_client_read(client, resp + n, resp_sz - 1 - n);
+            if (r <= 0) {
+                break;
+            }
+            n += r;
+        }
+        resp[n] = '\0';
+    }
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+    if (status != 200) {
+        ESP_LOGW(TAG, "音频上传失败 HTTP %d", status);
+        return ESP_FAIL;
+    }
     return ESP_OK;
 }
 
@@ -1314,6 +1383,50 @@ static void dispatch_command(const cmd_t *cmd, uint32_t *seq)
     run_command(cmd, seq);          /* recollect：采一批新数据 */
 }
 
+/* ============ 第5周：BOOT 键录音 ============
+ *
+ * 分工：
+ *   · 本任务只负责"开始"（立刻开始，不等主循环）和"请求结束"；
+ *   · "结束 + 上传"由主循环做 —— 本项目里 HTTP 客户端只允许主循环一个使用者，
+ *     两个任务同时 POST 会争用 http_client（第2周踩过）。
+ */
+static volatile bool s_rec_stop_req = false;
+
+static void boot_btn_task(void *arg)
+{
+    gpio_config_t io = {
+        .pin_bit_mask = 1ULL << BOOT_BTN_GPIO,
+        .mode         = GPIO_MODE_INPUT,
+        .pull_up_en   = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&io);
+
+    int last = 1, cnt = 0;
+    while (1) {
+        int v = gpio_get_level(BOOT_BTN_GPIO);
+        if (v != last) {
+            if (++cnt >= 3) {                    /* 20ms × 3 = 60ms 消抖 */
+                last = v;
+                if (v == 0) {                    /* 按下 */
+                    if (!mic_recording()) {
+                        if (mic_start() == ESP_OK) {
+                            ESP_LOGI(TAG, "======== 开始录音（再按一下 BOOT 结束）========");
+                            led_signal(LED_PAT_KEY);
+                        }
+                    } else {
+                        s_rec_stop_req = true;   /* 交给主循环收尾 */
+                    }
+                }
+            }
+        } else {
+            cnt = 0;
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+}
+
 void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -1332,6 +1445,13 @@ void app_main(void)
     led_init();
     btn_init();
     xTaskCreate(btn_task, "btn", 3072, NULL, 5, NULL);
+
+    /* 第5周：板载麦克风 + BOOT 录音键。
+     * 麦克风初始化失败只警告 —— 第1—4周的链路不能因为一个音频器件起不来就停摆。 */
+    if (mic_init() != ESP_OK) {
+        ESP_LOGW(TAG, "麦克风未就绪：录音功能不可用，其余功能照常");
+    }
+    xTaskCreate(boot_btn_task, "bootbtn", 3072, NULL, 4, NULL);
 
     /* 上电自检闪灯。这一步是专门给人眼看的：灯效是本项目里唯一
      * "写代码的人不在现场就无法验证"的输出，所以开机先自证一次。
@@ -1412,6 +1532,24 @@ void app_main(void)
     uint32_t seq = 0;
 
     while (1) {
+        /* —— 第5周：录音结束 → 上传 ——
+         * 放在循环最前面，因为上传要独占 HTTP 客户端。
+         * 录音采集本身在 I2S 任务里跑，这一秒的定时上报不会把它打断。 */
+        if (s_rec_stop_req) {
+            s_rec_stop_req = false;
+            const uint8_t *wav = NULL;
+            size_t wlen = 0;
+            float  secs = 0;
+            bool   trunc = false;
+            if (mic_stop(&wav, &wlen, &secs, &trunc) == ESP_OK && wav && wlen > 44) {
+                bool ok = http_post_binary(PATH_AUDIO, wav, wlen, resp, sizeof(resp)) == ESP_OK;
+                led_signal(ok ? LED_PAT_UPLOAD_OK : LED_PAT_FAIL);
+                ESP_LOGI(TAG, "录音上传%s：%.1f 秒 / %u 字节%s",
+                         ok ? "成功" : "失败", secs, (unsigned)wlen,
+                         trunc ? "（到 5 秒上限截断）" : "");
+            }
+        }
+
         /* —— 第3周：先响应实体按键 ——
          * 按键的语义是**发起一条教学求助测试消息**，不是"采一批数据"。
          * 非阻塞取：没有按键就继续走 1Hz 定时上报，不影响原有节奏。
@@ -1432,7 +1570,10 @@ void app_main(void)
          * 把命令通道一起停掉。这就是任务卡要的"暂停周期上报、保持命令通道"。 */
         if (s_paused || s_ack_need > 0) {
             poll_tick(&seq);
-            vTaskDelay(pdMS_TO_TICKS(POST_INTERVAL_MS));
+            /* 1 秒切成 20 段：录音结束时不用干等满 1 秒才处理 */
+        for (int _i = 0; _i < 20 && !s_rec_stop_req; _i++) {
+            vTaskDelay(pdMS_TO_TICKS(POST_INTERVAL_MS / 20));
+        }
             continue;
         }
 
@@ -1446,6 +1587,9 @@ void app_main(void)
                 }
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(POST_INTERVAL_MS));
+        /* 1 秒切成 20 段：录音结束时不用干等满 1 秒才处理 */
+        for (int _i = 0; _i < 20 && !s_rec_stop_req; _i++) {
+            vTaskDelay(pdMS_TO_TICKS(POST_INTERVAL_MS / 20));
+        }
     }
 }

@@ -74,6 +74,12 @@ AUDIO_DIR = os.path.join(ROOT, "audio")
 ASR_MAX_BYTES = 4 * 1024 * 1024
 ASR_TIMEOUT_S = 30
 
+# 第5周：设备端录音记录。只留最近 20 条在内存里 —— 它不是业务数据，
+# 是"板子刚刚说了什么"的即时回显；重启丢失可以接受（原始 WAV 仍在 audio/）。
+AUDIO_LOG = []
+AUDIO_LOG_MAX = 20
+AUDIO_LOCK = threading.Lock()
+
 # 超过这个秒数没收到新数据，就判定为"未更新"
 STALE_SECONDS = 5.0
 
@@ -309,6 +315,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_buttons(qs)
         if path == "/api/help":
             return self.api_help_list(qs)
+        if path == "/api/audio/latest":
+            return self.api_audio_latest(qs)
         if path == "/api/agent/info":
             # 只读信息：告诉前端用的是哪个运行时模型。
             # 只回主机名 / 模型名 / 是否配了密钥（布尔），**不回密钥本身**。
@@ -723,6 +731,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_ask()
         if path == "/api/asr":
             return self.api_asr()
+        if path == "/api/audio":
+            return self.api_audio()
         if path != "/api/data":
             return self._send_json(404, {"error": "not found"})
 
@@ -1064,6 +1074,33 @@ class Handler(BaseHTTPRequestHandler):
               f"{result.get('elapsed_s')}s")
         return self._send_json(200, result)
 
+    def _asr_run(self, wav_path):
+        """跑一次识别，返回统一的 dict（失败也不抛异常）。
+
+        抽出来的原因：/api/asr（浏览器）和 /api/audio（板子）都要跑同一条识别链路。
+        复制两份的话，将来改超时或改模型只会改到一处 —— 那种不一致最难查。
+        调用方自己决定失败时回什么状态码，因为两边的消费方不同。
+        """
+        t0 = time.time()
+        try:
+            p = subprocess.run([ASR_PY, ASR_WORKER, wav_path],
+                               capture_output=True, text=True, timeout=ASR_TIMEOUT_S,
+                               encoding="utf-8", errors="replace")
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "error": "asr_timeout",
+                    "elapsed_s": round(time.time() - t0, 2)}
+        except Exception as e:
+            return {"ok": False, "error": "asr_error", "detail": str(e)[:200]}
+
+        line = (p.stdout or "").strip().splitlines()
+        try:
+            res = json.loads(line[-1]) if line else {}
+        except json.JSONDecodeError:
+            return {"ok": False, "error": "asr_error",
+                    "detail": (p.stderr or p.stdout or "")[:300]}
+        res["elapsed_s"] = round(time.time() - t0, 2)
+        return res
+
     def api_asr(self):
         """POST /api/asr —— 第5周：把一段录音变成文字。
 
@@ -1115,27 +1152,13 @@ class Handler(BaseHTTPRequestHandler):
             })
 
         t0 = time.time()
-        try:
-            p = subprocess.run([ASR_PY, ASR_WORKER, wav_path],
-                               capture_output=True, text=True, timeout=ASR_TIMEOUT_S,
-                               encoding="utf-8", errors="replace")
-        except subprocess.TimeoutExpired:
-            return self._send_json(504, {
-                "ok": False, "error": "asr_timeout", "elapsed_s": round(time.time() - t0, 2),
-                "reply": "识别超时（超过 %d 秒），可以先改用文字输入。" % ASR_TIMEOUT_S,
-            })
-        except Exception as e:
-            return self._send_json(500, {"ok": False, "error": "asr_error",
-                                         "detail": str(e)[:200]})
+        res = self._asr_run(wav_path)
+        if res.get("error") == "asr_timeout":
+            res["reply"] = "识别超时（超过 %d 秒），可以先改用文字输入。" % ASR_TIMEOUT_S
+            return self._send_json(504, res)
+        if res.get("error") == "asr_error":
+            return self._send_json(500, res)
 
-        line = (p.stdout or "").strip().splitlines()
-        try:
-            res = json.loads(line[-1]) if line else {}
-        except json.JSONDecodeError:
-            return self._send_json(500, {"ok": False, "error": "asr_error",
-                                         "detail": (p.stderr or p.stdout or "")[:300]})
-
-        res["elapsed_s"] = round(time.time() - t0, 2)
         # 统一成一句人话，前端不用为每种错误各写一套文案
         if res.get("ok"):
             res["reply"] = "听清了：" + res.get("text", "")
@@ -1152,6 +1175,85 @@ class Handler(BaseHTTPRequestHandler):
               % (os.path.basename(wav_path), res.get("ok"), res.get("error"),
                  (res.get("text") or "")[:30], res["elapsed_s"]))
         return self._send_json(200 if res.get("ok") else 200, res)
+
+    def api_audio(self):
+        """POST /api/audio —— 第5周：**板子**录的一段 WAV（不是浏览器录的）。
+
+        和 /api/asr 的分工（两个端点不是重复）：
+          · /api/asr   是浏览器录的：识别完把文字回给页面，页面自己再调 /api/ask；
+          · /api/audio 是板子录的：板子没有喇叭、也没有页面，所以识别完就在这里
+            把第4周那条自然语言链路直接跑完，结果留在 AUDIO_LOG 里让页面来取。
+
+        为什么不让板子自己去调 /api/ask：板子只发一条 HTTP、不看返回，
+        把"识别 → 执行 → 留档"放在一步里，板子侧的代码才可能小到能塞进固件。
+        """
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = 0
+        if length <= 0:
+            return self._send_json(400, {"ok": False, "error": "empty_body"})
+        if length > 1024 * 1024:          # 5 秒 16k 单声道约 160KB，1MB 足够
+            return self._send_json(413, {"ok": False, "error": "too_large"})
+
+        raw = self.rfile.read(length)
+        if len(raw) < 44 or raw[:4] != b"RIFF" or raw[8:12] != b"WAVE":
+            return self._send_json(400, {"ok": False, "error": "audio_unreadable"})
+
+        os.makedirs(AUDIO_DIR, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        wav_path = os.path.join(AUDIO_DIR, "dev-%s-%03d.wav"
+                                % (stamp, int(time.time() * 1000) % 1000))
+        with open(wav_path, "wb") as f:
+            f.write(raw)
+
+        res = self._asr_run(wav_path)
+        text = (res.get("text") or "").strip()
+        entry = {
+            "id": os.path.basename(wav_path),
+            "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "source": "device-mic",
+            "bytes": len(raw),
+            "asr_elapsed_s": res.get("elapsed_s"),
+            "asr_error": res.get("error"),
+            "text": text,
+            "ok": bool(text),
+        }
+        if text:
+            try:
+                answer = AGENT.handle(text)
+                entry["reply"] = answer.get("reply")
+                entry["intent"] = answer.get("intent")
+                entry["tool"] = answer.get("tool")
+                entry["ok"] = bool(answer.get("ok"))
+            except Exception as e:
+                entry["reply"] = "助手内部出错，没有执行任何采集动作。"
+                entry["ok"] = False
+                print("[audio] agent 异常: %s" % e)
+        else:
+            entry["reply"] = {
+                "silence": "没听到声音 —— 板子麦克风可能没收到声音，靠近一点再说一次。",
+                "empty_text": "有声音，但没听出词。再说一遍，稍微慢一点。",
+                "audio_unreadable": "这段音频格式不对（要 16k 单声道 WAV）。",
+            }.get(res.get("error"), "识别出错了，可以改用网页文字输入。")
+
+        with AUDIO_LOCK:
+            AUDIO_LOG.append(entry)
+            del AUDIO_LOG[:-AUDIO_LOG_MAX]
+
+        print("[audio] %s bytes=%d text=%r reply=%r"
+              % (entry["id"], entry["bytes"], text[:30], (entry.get("reply") or "")[:40]))
+        return self._send_json(200, entry)
+
+    def api_audio_latest(self, qs):
+        """GET /api/audio/latest —— 页面拉取板子最近的语音记录。"""
+        try:
+            limit = max(1, min(20, int((qs.get("limit") or ["5"])[0])))
+        except ValueError:
+            limit = 5
+        with AUDIO_LOCK:
+            items = AUDIO_LOG[-limit:]
+        return self._send_json(200, {"events": list(reversed(items))})
 
     def api_help_reply(self, eid: str):
         """POST /api/help/<id>/reply —— 查看者「回应」或「取消」。

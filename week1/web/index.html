@@ -772,6 +772,8 @@
          识别在本机离线引擎上跑；板子不参与音频，运行位置在页面上一并标出。 -->
     <div class="nlvoice">
       <button id="nlMic" type="button">开始录音</button>
+      <button id="nlPick" type="button">选录音文件</button>
+      <input id="nlFile" type="file" accept="audio/*" hidden>
       <label class="nlspeak">
         <input id="nlSpeakOn" type="checkbox" checked>
         播报回答
@@ -1998,7 +2000,26 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
         micBtn.classList.add('recording');
         setVoice('录音中… 说完点「结束录音」', 'ok');
       } catch (e) {
-        setVoice('拿不到麦克风：' + (e.name || e.message), 'bad');
+        /* 这三种失败必须分开说 —— 用户能采取的动作完全不同：
+         *   NotFound      → 机器上根本没有可用麦克风（端点未连接/没插）
+         *   NotAllowed    → 有设备，但权限被拒
+         *   NotReadable   → 设备被别的程序占着
+         * 全写成"拿不到麦克风"等于让人自己猜。 */
+        const name = e && e.name ? e.name : '';
+        let msg;
+        if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+          msg = '这台电脑没有可用的麦克风（系统里麦克风端点未连接）。'
+              + '可以点「选录音文件」用一段真实录音，或插一个耳麦。';
+        } else if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+          msg = '麦克风权限被拒了：点地址栏左边的图标，把麦克风改成"允许"。';
+        } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+          msg = '麦克风被别的程序占用了（会议/录音软件），关掉再试。';
+        } else if (name === 'OverconstrainedError') {
+          msg = '麦克风不支持要求的采样参数，换一个设备试试。';
+        } else {
+          msg = '拿不到麦克风：' + (name || e.message || e);
+        }
+        setVoice(msg, 'bad');
       }
     }
 
@@ -2020,8 +2041,15 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
       const flat = new Float32Array(total);
       let off = 0; r.chunks.forEach(c => { flat.set(c, off); off += c.length; });
       const blob = encodeWav(downsample(flat, r.rate, 16000), 16000);
+      const secs2 = secs.toFixed(1);
+      await uploadAndSend(blob, '录音 ' + secs2 + ' 秒');
+    }
 
-      setVoice('识别中…（' + secs.toFixed(1) + ' 秒 / ' + (blob.size / 1024).toFixed(0) + ' KB）', 'ok');
+    /* 上传 + 识别 + 交给第4周入口。
+     * 录音和"选文件"两条来源共用这一段：来源不同，处理必须一样，
+     * 否则"同一段话录音能识别、文件不能"就成了新的不一致。 */
+    async function uploadAndSend(blob, label) {
+      setVoice('识别中…（' + label + ' / ' + (blob.size / 1024).toFixed(0) + ' KB）', 'ok');
       try {
         const resp = await fetch('/api/asr', {
           method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: blob
@@ -2038,6 +2066,33 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
         await send(d.text, true);
       } catch (e) {
         setVoice('上传失败：' + (e.message || e), 'bad');
+      }
+    }
+
+    /* 备用路径：选一段已有的音频文件（手机录的、录音机里导出的都行）。
+     * 浏览器的 decodeAudioData 能把 mp3 / m4a / wav / webm 都解成 PCM，
+     * 所以不需要服务端装 ffmpeg。解完再走同一条上传链路。 */
+    async function handleFile(file) {
+      if (!file) return;
+      setVoice('解音频…（' + file.name + '）', 'ok');
+      let ctx = null;
+      try {
+        const buf = await file.arrayBuffer();
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const audio = await ctx.decodeAudioData(buf);
+        const chs = audio.numberOfChannels, len = audio.length;
+        const mono = new Float32Array(len);
+        for (let c = 0; c < chs; c++) {
+          const d = audio.getChannelData(c);
+          for (let i = 0; i < len; i++) mono[i] += d[i] / chs;
+        }
+        const rate = audio.sampleRate;
+        try { await ctx.close(); } catch (e) {}
+        const blob = encodeWav(downsample(mono, rate, 16000), 16000);
+        await uploadAndSend(blob, '文件 ' + file.name);
+      } catch (e) {
+        if (ctx) { try { await ctx.close(); } catch (e2) {} }
+        setVoice('这个音频解不开（' + (e.message || e.name) + '），试试 wav / mp3 / m4a。', 'bad');
       }
     }
 
@@ -2060,9 +2115,48 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
     if (micBtn) {
       micBtn.addEventListener('click', () => { rec ? stopRec() : startRec(); });
     }
+    const pickBtn = document.getElementById('nlPick');
+    const fileInput = document.getElementById('nlFile');
+    if (pickBtn && fileInput) {
+      pickBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => {
+        const f = fileInput.files && fileInput.files[0];
+        fileInput.value = '';            // 允许同一个文件再选一次
+        handleFile(f);
+      });
+    }
     if (!('speechSynthesis' in window) && speakOn) {
       speakOn.checked = false; speakOn.disabled = true;
     }
+
+    /* 板子麦克风的录音：服务端识别 + 执行完，会把结果留在 /api/audio/latest。
+     * 这里每 2 秒拉一次，出现新的就贴进对话。
+     * 为什么必须由页面呈现：板子没有屏幕、也没有喇叭 ——
+     * 它"说了一句话"这件事，只有页面能告诉人。 */
+    let lastAudioId = null;
+    async function pollDeviceAudio() {
+      try {
+        const r = await fetch('/api/audio/latest?limit=3', { cache: 'no-store' });
+        const d = await r.json();
+        const ev = (d.events || [])[0];
+        if (!ev || ev.id === lastAudioId) return;
+        lastAudioId = ev.id;
+        if (!ev.text) {
+          addMsg('bot', '板子录音：' + (ev.reply || '没听清'),
+                 [{ t: '来自板子麦克风', k: 'bad' }, { t: ev.ts || '' }]);
+          return;
+        }
+        addMsg('me', ev.text, [{ t: '来自板子麦克风', k: 'ok' }, { t: ev.ts || '' }]);
+        const meta = [];
+        if (ev.intent) meta.push({ t: '意图 ' + ev.intent });
+        if (ev.tool) meta.push({ t: '工具 ' + ev.tool });
+        meta.push({ t: ev.ok ? '完成' : '未完成', k: ev.ok ? 'ok' : 'bad' });
+        addMsg('bot', ev.reply || '（没有回答）', meta);
+        if (speakOn && speakOn.checked && ev.reply) speak(ev.reply);
+      } catch (e) { /* 轮询失败不打扰用户，下一轮再来 */ }
+    }
+    pollDeviceAudio();
+    setInterval(pollDeviceAudio, 2000);
 
   function addMsg(who, body, meta) {
     const empty = log.querySelector('.nlempty');
