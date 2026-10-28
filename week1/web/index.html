@@ -201,6 +201,15 @@
      而那种问题很难一眼看出是自己写错了变量名。 */
   .nlrow { display: flex; gap: 8px; margin: 12px 0 8px; }
   .nlrow input { flex: 1; min-width: 0; }
+
+  /* 第5周：语音行。录音按钮在录音时要有明显的状态变化 ——
+     否则用户不知道"到底开没开麦"（这是走查里发现的同类问题：
+     状态不说清楚，人就只能猜）。 */
+  .nlvoice { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; }
+  .nlvoice .nlhint { color: var(--muted); font-size: 12px; }
+  .nlvoice button { white-space: nowrap; }
+  .nlvoice button.recording { border-color: var(--hot); color: var(--hot); }
+  .nlspeak { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
   .nlchips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
   .nlchips button {
     font-size: 12px; padding: 4px 10px; border-radius: 999px;
@@ -757,6 +766,18 @@
       <input id="nlInput" type="text" autocomplete="off"
              placeholder="例如：查看上次数据　/　重新采集一次　/　设备在哪个位置？">
       <button id="nlSend" type="button">发送</button>
+    </div>
+
+    <!-- 第5周：语音入口。录音在**浏览器里**完成（电脑麦克风），
+         识别在本机离线引擎上跑；板子不参与音频，运行位置在页面上一并标出。 -->
+    <div class="nlvoice">
+      <button id="nlMic" type="button">开始录音</button>
+      <label class="nlspeak">
+        <input id="nlSpeakOn" type="checkbox" checked>
+        播报回答
+      </label>
+      <span id="nlVoiceState" class="tag">麦克风未使用</span>
+      <span class="nlhint">录音 → 识别 → 执行 → 播报，四个状态都会显示在这里</span>
     </div>
 
     <div class="nlchips" id="nlChips">
@@ -1904,7 +1925,144 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
   const modelTag = document.getElementById('nlModel');
   if (!log || !input || !btn) return;
 
-  let busy = false;
+    let busy = false;
+
+    /* ================= 第5周：语音入口 =================
+     * 录音在浏览器里做（Web Audio 直接取 PCM），不走 MediaRecorder：
+     * MediaRecorder 出来的是 WebM/Opus，转 WAV 要 ffmpeg，而本机没有，
+     * 也不该为了一句语音装一个转码链。这里直接采 PCM → 降采样到 16k → 封 WAV。
+     *
+     * 运行位置要标清楚：麦克风是**电脑**的，识别是**本机离线引擎**的，
+     * 板子不参与音频。任务卡要求"明确运行位置"，所以页面上写死这句。
+     */
+    const micBtn = document.getElementById('nlMic');
+    const voiceState = document.getElementById('nlVoiceState');
+    const speakOn = document.getElementById('nlSpeakOn');
+    let rec = null;
+
+    function setVoice(text, kind) {
+      if (!voiceState) return;
+      voiceState.textContent = text;
+      voiceState.className = 'tag' + (kind ? ' ' + kind : '');
+    }
+
+    function encodeWav(samples, rate) {
+      const len = samples.length;
+      const buf = new ArrayBuffer(44 + len * 2);
+      const v = new DataView(buf);
+      const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+      w(0, 'RIFF'); v.setUint32(4, 36 + len * 2, true); w(8, 'WAVE');
+      w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+      v.setUint16(22, 1, true); v.setUint32(24, rate, true);
+      v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+      w(36, 'data'); v.setUint32(40, len * 2, true);
+      for (let i = 0; i < len; i++) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      }
+      return new Blob([buf], { type: 'audio/wav' });
+    }
+
+    function downsample(input, inRate, outRate) {
+      if (outRate === inRate) return input;
+      const ratio = inRate / outRate;
+      const outLen = Math.round(input.length / ratio);
+      const out = new Float32Array(outLen);
+      let pos = 0;
+      for (let i = 0; i < outLen; i++) {
+        const next = Math.round((i + 1) * ratio);
+        let sum = 0, n = 0;
+        for (let j = pos; j < next && j < input.length; j++) { sum += input[j]; n++; }
+        out[i] = n ? sum / n : 0;
+        pos = next;
+      }
+      return out;
+    }
+
+    async function startRec() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setVoice('这个浏览器不支持录音', 'bad'); return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
+        });
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = ctx.createMediaStreamSource(stream);
+        const node = ctx.createScriptProcessor(4096, 1, 1);
+        const chunks = [];
+        node.onaudioprocess = e => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+        src.connect(node); node.connect(ctx.destination);
+        rec = { stream, ctx, src, node, chunks, started: Date.now(), rate: ctx.sampleRate };
+        micBtn.textContent = '结束录音';
+        micBtn.classList.add('recording');
+        setVoice('录音中… 说完点「结束录音」', 'ok');
+      } catch (e) {
+        setVoice('拿不到麦克风：' + (e.name || e.message), 'bad');
+      }
+    }
+
+    async function stopRec() {
+      if (!rec) return;
+      const r = rec; rec = null;
+      micBtn.textContent = '开始录音';
+      micBtn.classList.remove('recording');
+      try { r.node.disconnect(); r.src.disconnect(); } catch (e) {}
+      r.stream.getTracks().forEach(t => t.stop());
+      try { await r.ctx.close(); } catch (e) {}
+
+      let total = 0; r.chunks.forEach(c => total += c.length);
+      const secs = (Date.now() - r.started) / 1000;
+      if (total === 0 || secs < 0.4) {
+        setVoice('录音太短（' + secs.toFixed(1) + ' 秒），没有上传', 'bad');
+        return;
+      }
+      const flat = new Float32Array(total);
+      let off = 0; r.chunks.forEach(c => { flat.set(c, off); off += c.length; });
+      const blob = encodeWav(downsample(flat, r.rate, 16000), 16000);
+
+      setVoice('识别中…（' + secs.toFixed(1) + ' 秒 / ' + (blob.size / 1024).toFixed(0) + ' KB）', 'ok');
+      try {
+        const resp = await fetch('/api/asr', {
+          method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: blob
+        });
+        const d = await resp.json();
+        if (!d.ok) {
+          setVoice(d.reply || '没听清', 'bad');
+          addMsg('bot', d.reply || '（没听清）',
+                 [{ t: '语音 ' + (d.error || '失败'), k: 'bad' }, { t: d.elapsed_s + ' 秒' }]);
+          return;
+        }
+        /* 识别成功 → 走**同一套**文字入口。不让语音另起一条执行路径：
+           两条路径迟早会长出两种行为，那时"同一句话文字和语音结果不同"就成了新 bug。 */
+        await send(d.text, true);
+      } catch (e) {
+        setVoice('上传失败：' + (e.message || e), 'bad');
+      }
+    }
+
+    function speak(text) {
+      if (!('speechSynthesis' in window) || !text) {
+        setVoice('这个浏览器不支持播报（文字照常显示）', 'bad'); return;
+      }
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-CN';
+      u.rate = 1.0;
+      const vs = speechSynthesis.getVoices().filter(v => /zh|Chinese/i.test(v.lang + ' ' + v.name));
+      if (vs.length) u.voice = vs[0];
+      u.onstart = () => setVoice('播报中…', 'ok');
+      u.onend = () => setVoice('就绪', '');
+      u.onerror = () => setVoice('播报失败（文字照常显示）', 'bad');
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    }
+
+    if (micBtn) {
+      micBtn.addEventListener('click', () => { rec ? stopRec() : startRec(); });
+    }
+    if (!('speechSynthesis' in window) && speakOn) {
+      speakOn.checked = false; speakOn.disabled = true;
+    }
 
   function addMsg(who, body, meta) {
     const empty = log.querySelector('.nlempty');
@@ -1936,14 +2094,14 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
     return box;
   }
 
-  async function send(text) {
+  async function send(text, fromVoice) {
     text = (text || '').trim();
     if (!text || busy) return;
     busy = true;
     btn.disabled = true;
     state.textContent = '处理中…';
     state.className = 'tag';
-    addMsg('me', text);
+    addMsg('me', text, fromVoice ? [{ t: '语音输入', k: 'ok' }] : null);
     const wait = addMsg('bot', '（模型正在解析意图…）');
     wait.querySelector('.body').textContent = '（模型正在解析意图…）';
 
@@ -1982,6 +2140,9 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
       }
       state.textContent = d.ok ? '完成' : '已拒绝';
       state.className = 'tag ' + (d.ok ? '' : '');
+      /* 播报放在最后：先让文字结果落地，再出声。
+         顺序反过来的话，播报一慢，用户会以为"没反应"而重复点击。 */
+      if (speakOn && speakOn.checked && d.reply) speak(d.reply);
     } catch (e) {
       wait.querySelector('.body').textContent = '请求失败：' + String(e);
       state.textContent = '出错';

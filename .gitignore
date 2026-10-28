@@ -21,7 +21,14 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+.venv-asr/
 .pytest_cache/
+
+# ---- 第5周：语音链路 ----
+# 识别模型是第三方资产（40MB+），只记来源与校验和，不入库
+week1/tools/models/
+# 运行时录音与合成音频，每次内容都不同
+week1/audio/
 
 # ---- SQLite 运行期临时文件 ----
 # readings.db 本身是实测数据、要入库；journal/wal/shm 是写入中途或进程被强杀

@@ -44,6 +44,7 @@ import os
 import queue
 import socket
 import sqlite3
+import subprocess
 import sys
 import threading
 import time
@@ -61,6 +62,17 @@ ROOT = os.path.dirname(HERE)
 WEB_DIR = os.path.join(ROOT, "web")
 DATA_DIR = os.path.join(ROOT, "data")
 DB_PATH = os.path.join(DATA_DIR, "readings.db")
+
+# ---- 第5周：语音识别（离线，跑在独立的虚拟环境里）----
+# 为什么不 import vosk：识别引擎装在 week1/.venv-asr，与本服务的 Python 隔离；
+# 崩了也不会把业务服务带下去。这里只负责“把 WAV 交给它、把 JSON 拿回来”。
+ASR_PY = os.path.join(ROOT, ".venv-asr", "Scripts", "python.exe")
+ASR_WORKER = os.path.join(ROOT, "tools", "asr_worker.py")
+AUDIO_DIR = os.path.join(ROOT, "audio")
+# 单次上传上限 4MB ≈ 16kHz 单声道 2 分钟，够说一句话了；
+# 超过就拒，避免有人把整个音频库传上来。
+ASR_MAX_BYTES = 4 * 1024 * 1024
+ASR_TIMEOUT_S = 30
 
 # 超过这个秒数没收到新数据，就判定为"未更新"
 STALE_SECONDS = 5.0
@@ -709,6 +721,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_help_reply(path[len("/api/help/"):-len("/reply")])
         if path == "/api/ask":
             return self.api_ask()
+        if path == "/api/asr":
+            return self.api_asr()
         if path != "/api/data":
             return self._send_json(404, {"error": "not found"})
 
@@ -1049,6 +1063,95 @@ class Handler(BaseHTTPRequestHandler):
               f"tool={result.get('tool')} ok={result.get('ok')} "
               f"{result.get('elapsed_s')}s")
         return self._send_json(200, result)
+
+    def api_asr(self):
+        """POST /api/asr —— 第5周：把一段录音变成文字。
+
+        请求体是**裸 WAV**（不是 multipart）：16kHz / 单声道 / 16bit PCM。
+        浏览器侧用 Web Audio 直接采 PCM 再封装成 WAV，所以这里不做格式转换 ——
+        换格式需要 ffmpeg，本项目没装，也不该为一句语音引入一个转码依赖。
+
+        返回里**必须**把三件事分开（对应任务卡的"无声、识别失败、服务超时都产生可理解反馈"）：
+          · silence          —— 录到了，但里面没声音（麦克风开着却没说话）
+          · audio_unreadable —— 传上来的不是合法 WAV（采集侧出了问题）
+          · asr_error/timeout—— 识别服务本身异常
+        把这三件事混成一句"识别失败"，用户根本不知道该查麦克风还是该重说一遍。
+        """
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = 0
+        if length <= 0:
+            return self._send_json(400, {"ok": False, "error": "empty_body",
+                                         "reply": "没有收到音频。"})
+        if length > ASR_MAX_BYTES:
+            return self._send_json(413, {"ok": False, "error": "too_large",
+                                         "reply": "录音太长了（上限 4MB，约 2 分钟）。"})
+
+        raw = self.rfile.read(length)
+        # 先认文件头。浏览器侧如果编码错了，这里就能挡住，
+        # 不用等识别进程起来再失败。
+        if len(raw) < 44 or raw[:4] != b"RIFF" or raw[8:12] != b"WAVE":
+            return self._send_json(400, {
+                "ok": False, "error": "audio_unreadable",
+                "reply": "收到的不是 WAV 音频，录音可能没成功。",
+            })
+
+        os.makedirs(AUDIO_DIR, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        wav_path = os.path.join(AUDIO_DIR, "rec-%s-%03d.wav" % (stamp, int(time.time() * 1000) % 1000))
+        try:
+            with open(wav_path, "wb") as f:
+                f.write(raw)
+        except OSError as e:
+            return self._send_json(500, {"ok": False, "error": "store_failed",
+                                         "detail": str(e)[:200]})
+
+        if not os.path.exists(ASR_PY) or not os.path.exists(ASR_WORKER):
+            return self._send_json(503, {
+                "ok": False, "error": "asr_unavailable",
+                "reply": "识别服务没装好（缺少 .venv-asr 或 tools/asr_worker.py），"
+                         "文字入口仍然可用。",
+            })
+
+        t0 = time.time()
+        try:
+            p = subprocess.run([ASR_PY, ASR_WORKER, wav_path],
+                               capture_output=True, text=True, timeout=ASR_TIMEOUT_S,
+                               encoding="utf-8", errors="replace")
+        except subprocess.TimeoutExpired:
+            return self._send_json(504, {
+                "ok": False, "error": "asr_timeout", "elapsed_s": round(time.time() - t0, 2),
+                "reply": "识别超时（超过 %d 秒），可以先改用文字输入。" % ASR_TIMEOUT_S,
+            })
+        except Exception as e:
+            return self._send_json(500, {"ok": False, "error": "asr_error",
+                                         "detail": str(e)[:200]})
+
+        line = (p.stdout or "").strip().splitlines()
+        try:
+            res = json.loads(line[-1]) if line else {}
+        except json.JSONDecodeError:
+            return self._send_json(500, {"ok": False, "error": "asr_error",
+                                         "detail": (p.stderr or p.stdout or "")[:300]})
+
+        res["elapsed_s"] = round(time.time() - t0, 2)
+        # 统一成一句人话，前端不用为每种错误各写一套文案
+        if res.get("ok"):
+            res["reply"] = "听清了：" + res.get("text", "")
+        elif res.get("error") == "silence":
+            res["reply"] = "没听到声音 —— 看看麦克风是不是被静音了，或者离远了一点。"
+        elif res.get("error") == "empty_text":
+            res["reply"] = "有声音，但没听出词。再说一遍，稍微慢一点。"
+        elif res.get("error") == "audio_unreadable":
+            res["reply"] = "这段录音的格式不对（要 16kHz 单声道），这次没用上。"
+        else:
+            res.setdefault("reply", "识别出错了，可以先用文字输入。")
+
+        print("[asr] %s ok=%s err=%s text=%r %ss"
+              % (os.path.basename(wav_path), res.get("ok"), res.get("error"),
+                 (res.get("text") or "")[:30], res["elapsed_s"]))
+        return self._send_json(200 if res.get("ok") else 200, res)
 
     def api_help_reply(self, eid: str):
         """POST /api/help/<id>/reply —— 查看者「回应」或「取消」。
