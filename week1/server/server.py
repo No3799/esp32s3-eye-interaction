@@ -43,6 +43,7 @@ import json
 import os
 import queue
 import socket
+import socketserver
 import sqlite3
 import subprocess
 import sys
@@ -1427,6 +1428,26 @@ def lan_ip() -> str:
         s.close()
 
 
+class Server(ThreadingHTTPServer):
+    """带一个必要的修正：**启动时不做反向 DNS 查询**。
+
+    `http.server.HTTPServer.server_bind()` 里有一句 `socket.getfqdn(host)`，
+    它会为绑定地址做一次反向解析。这台机器 DNS 不稳（github 都连不上），
+    于是整台服务器卡在那里：**端口已绑定、但从不 listen**，
+    日志一个字都没有，`netstat` 也看不到 LISTEN ——
+    表现像"服务根本没启动"，实际是卡在启动的第一行网络调用上。
+
+    这里只保留真正的 bind，server_name 直接用绑定地址。
+    """
+    daemon_threads = True
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name = host or "localhost"
+        self.server_port = port
+
+
 def main():
     # 必须在用到 MAX_ROWS/STALE_SECONDS 之前声明（它们要给 argparse 当默认值）；
     # 不声明 global 的话，下面只是改了局部变量，命令行参数不会生效。
@@ -1469,7 +1490,7 @@ def main():
 
     threading.Thread(target=sweep_loop, daemon=True, name="cmd-timeout").start()
 
-    srv = ThreadingHTTPServer((args.host, args.port), Handler)
+    srv = Server((args.host, args.port), Handler)
     lan = lan_ip()
     print("[week1] 服务已启动")
     print(f"[week1]   本机访问  : http://127.0.0.1:{args.port}")
