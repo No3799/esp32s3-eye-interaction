@@ -72,7 +72,9 @@ AUDIO_DIR = os.path.join(ROOT, "audio")
 # 单次上传上限 4MB ≈ 16kHz 单声道 2 分钟，够说一句话了；
 # 超过就拒，避免有人把整个音频库传上来。
 ASR_MAX_BYTES = 4 * 1024 * 1024
-ASR_TIMEOUT_S = 30
+# 识别超时（秒）。可用环境变量覆盖 —— 否则"超时了会怎样"这条路径永远测不到：
+# 正常识别只要 0.5~1 秒，不可能自然超时，只能把阈值压到比它更小来真触发一次。
+ASR_TIMEOUT_S = float(os.environ.get("ASR_TIMEOUT_S", "30"))
 
 # 第5周：设备端录音记录。只留最近 20 条在内存里 —— 它不是业务数据，
 # 是"板子刚刚说了什么"的即时回显；重启丢失可以接受（原始 WAV 仍在 audio/）。
@@ -1101,6 +1103,25 @@ class Handler(BaseHTTPRequestHandler):
         res["elapsed_s"] = round(time.time() - t0, 2)
         return res
 
+    def _drain_body(self, length: int, cap: int) -> int:
+        """把客户端**还在发**的请求体读掉，再回错误。
+
+        为什么非读不可：直接回 413 然后关连接，客户端（浏览器 / 板子 / 脚本）
+        可能还在写剩下的字节，Windows 上这会收到 RST ——
+        于是它**读不到**那条友好的 JSON，浏览器只显示 "Failed to fetch"，
+        "给可理解的反馈"当场落空。这是 test_asr_paths.py 实测出来的，不是推测。
+
+        上限 cap 防止有人用超大请求把服务拖住：超过就停止排空、直接断。
+        """
+        drained = 0
+        limit = min(length, cap)
+        while drained < limit:
+            chunk = self.rfile.read(min(65536, limit - drained))
+            if not chunk:
+                break
+            drained += len(chunk)
+        return drained
+
     def api_asr(self):
         """POST /api/asr —— 第5周：把一段录音变成文字。
 
@@ -1122,6 +1143,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json(400, {"ok": False, "error": "empty_body",
                                          "reply": "没有收到音频。"})
         if length > ASR_MAX_BYTES:
+            self._drain_body(length, ASR_MAX_BYTES * 4)
             return self._send_json(413, {"ok": False, "error": "too_large",
                                          "reply": "录音太长了（上限 4MB，约 2 分钟）。"})
 
@@ -1154,7 +1176,8 @@ class Handler(BaseHTTPRequestHandler):
         t0 = time.time()
         res = self._asr_run(wav_path)
         if res.get("error") == "asr_timeout":
-            res["reply"] = "识别超时（超过 %d 秒），可以先改用文字输入。" % ASR_TIMEOUT_S
+            res["reply"] = ("识别超时（超过 %g 秒），可以先改用文字输入。"
+                            % ASR_TIMEOUT_S)
             return self._send_json(504, res)
         if res.get("error") == "asr_error":
             return self._send_json(500, res)
@@ -1194,6 +1217,7 @@ class Handler(BaseHTTPRequestHandler):
         if length <= 0:
             return self._send_json(400, {"ok": False, "error": "empty_body"})
         if length > 1024 * 1024:          # 5 秒 16k 单声道约 160KB，1MB 足够
+            self._drain_body(length, 4 * 1024 * 1024)
             return self._send_json(413, {"ok": False, "error": "too_large"})
 
         raw = self.rfile.read(length)

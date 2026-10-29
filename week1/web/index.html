@@ -2061,9 +2061,13 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
                  [{ t: '语音 ' + (d.error || '失败'), k: 'bad' }, { t: d.elapsed_s + ' 秒' }]);
           return;
         }
-        /* 识别成功 → 走**同一套**文字入口。不让语音另起一条执行路径：
-           两条路径迟早会长出两种行为，那时"同一句话文字和语音结果不同"就成了新 bug。 */
-        await send(d.text, true);
+          /* 识别成功 → 走**同一套**文字入口。不让语音另起一条执行路径：
+             两条路径迟早会长出两种行为，那时"同一句话文字和语音结果不同"就成了新 bug。 */
+          /* 任务卡点名要显示"录音、识别、任务执行、播放"四个状态。
+             识别完不切标签的话，后面几秒（模型解析 + 采集要等设备回执）一直显示
+             "识别中…"，看起来像识别卡住了 —— 实际是在执行任务。 */
+          setVoice('执行中…（已识别：' + d.text + '）', 'ok');
+          await send(d.text, true);
       } catch (e) {
         setVoice('上传失败：' + (e.message || e), 'bad');
       }
@@ -2237,9 +2241,12 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
       /* 播报放在最后：先让文字结果落地，再出声。
          顺序反过来的话，播报一慢，用户会以为"没反应"而重复点击。 */
       if (speakOn && speakOn.checked && d.reply) speak(d.reply);
-    } catch (e) {
-      wait.querySelector('.body').textContent = '请求失败：' + String(e);
-      state.textContent = '出错';
+      } catch (e) {
+        wait.querySelector('.body').textContent = '请求失败：' + String(e);
+        state.textContent = '出错';
+        /* 语音进来的请求失败时，别把标签留在"执行中…" ——
+           那会让人以为还在跑。文字入口本身没受影响，可以说清。 */
+        if (fromVoice) setVoice('执行失败（文字入口仍可用）', 'bad');
     } finally {
       busy = false;
       btn.disabled = false;

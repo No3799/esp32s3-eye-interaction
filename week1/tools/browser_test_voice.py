@@ -26,6 +26,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import browser_test as bt  # noqa: E402
+import browser_test_nl as btnl  # noqa: E402  （复用它里面的真鼠标点击）
 
 
 def js(ws, expr):
@@ -95,6 +96,25 @@ def main():
             check("无麦克风：按钮没有卡在「结束录音」",
                   js(ws, "document.getElementById('nlMic').innerText").strip() == "开始录音",
                   js(ws, "document.getElementById('nlMic').innerText"))
+
+            # —— 语音刚失败过，文字入口必须照样能用（任务卡「当堂验证」点名的）——
+            # 这一条防的是"语音坏了把整页拖死"：按钮 disabled 没复位、
+            # 或者 busy 卡住，都会让文字也发不出去，但页面上看不出来。
+            js(ws, "document.getElementById('nlInput').value = '查看上次数据'; 1")
+            rc = btnl.click_real(ws, "#nlSend")
+            check("文字入口：发送按钮可见且点得到", rc.get("clicked"), str(rc))
+            got = ""
+            deadline = time.time() + 90
+            while time.time() < deadline:
+                got = js(ws, "document.body.innerText") or ""
+                if ("已读取" in got) or ("请求失败" in got) or ("已拒绝" in got):
+                    break
+                time.sleep(1)
+            check("文字入口：语音失败后仍能拿到回答", "已读取" in got,
+                  (got[-200:].replace("\n", " ") if got else "页面没有文字"))
+            check("文字入口：按钮没有一直禁用",
+                  js(ws, "document.getElementById('nlSend').disabled") is False,
+                  js(ws, "document.getElementById('nlSend').disabled"))
             ws.close()
             print()
             print("  共 %d 项，通过 %d，未通过 %d" % (ok_n + bad_n, ok_n, bad_n))
