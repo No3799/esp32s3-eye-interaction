@@ -1058,6 +1058,23 @@ class Handler(BaseHTTPRequestHandler):
         if not text:
             return self._send_json(400, {"error": "text required"})
 
+        # 第6周：请求 id。前端用它把"这一次任务"和后续的日志/迟到判定对上；
+        # 服务端只负责**回显 + 落到日志**，不参与取消决策（取消是客户端的事，
+        # 因为服务端一旦开始执行工具，中途停掉反而会留下"指令发了没人收"的烂摊子）。
+        req_id = str(body.get("req_id") or "").strip()[:64]
+
+        # 第6周备用路径：延迟注入。任务卡「备用路径」写的是
+        # 「网络模型不稳定时用延迟注入复现状态错误」——只有 --fault-injection
+        # 打开时才生效，正常跑的时候这个参数完全无效。
+        if FAULT_ENABLED:
+            try:
+                delay_ms = int(body.get("delay_ms") or 0)
+            except (TypeError, ValueError):
+                delay_ms = 0
+            if 0 < delay_ms <= 30000:
+                print(f"[ask] 延迟注入 {delay_ms} ms  req_id={req_id or '-'}")
+                time.sleep(delay_ms / 1000.0)
+
         try:
             result = AGENT.handle(text)
         except Exception as e:
@@ -1072,7 +1089,8 @@ class Handler(BaseHTTPRequestHandler):
 
         # 注意：**不要**把 llm 的 base_url / api_key 之类回传。
         # AGENT.public_info() 只暴露主机名、模型名、是否有密钥。
-        print(f"[ask] 「{text[:40]}」→ intent={result.get('intent')} "
+        result["req_id"] = req_id
+        print(f"[ask] req_id={req_id or '-'} 「{text[:40]}」→ intent={result.get('intent')} "
               f"tool={result.get('tool')} ok={result.get('ok')} "
               f"{result.get('elapsed_s')}s")
         return self._send_json(200, result)

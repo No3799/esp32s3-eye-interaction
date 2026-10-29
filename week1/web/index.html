@@ -201,6 +201,8 @@
      而那种问题很难一眼看出是自己写错了变量名。 */
   .nlrow { display: flex; gap: 8px; margin: 12px 0 8px; }
   .nlrow input { flex: 1; min-width: 0; }
+  .nlrow button.stop { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .nlrow button.stop:hover { color: var(--text); border-color: var(--muted); }
 
   /* 第5周：语音行。录音按钮在录音时要有明显的状态变化 ——
      否则用户不知道"到底开没开麦"（这是走查里发现的同类问题：
@@ -774,6 +776,10 @@
       <input id="nlInput" type="text" autocomplete="off"
              placeholder="例如：查看上次数据　/　重新采集一次　/　设备在哪个位置？">
       <button id="nlSend" type="button">发送</button>
+      <!-- 停止按钮：任务卡「备用路径」点名要保留的那个。它做的事有三件，
+           不是一件：中止在途请求、停掉正在念的播报、把状态拉回空闲。
+           少了任何一条，"取消"都只是看起来取消了。 -->
+      <button id="nlStop" type="button" class="stop" title="停止（Esc）">停止</button>
     </div>
 
     <!-- 第5周：语音入口。录音在**浏览器里**完成（电脑麦克风），
@@ -1931,6 +1937,7 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
   const log = document.getElementById('nlLog');
   const input = document.getElementById('nlInput');
   const btn = document.getElementById('nlSend');
+  const stopBtn = document.getElementById('nlStop');
   const state = document.getElementById('nlState');
   const modelTag = document.getElementById('nlModel');
   if (!log || !input || !btn) return;
@@ -2207,29 +2214,67 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
     return box;
   }
 
+  /* —— 第6周：一次会话的"身份" —— *
+   * gen 每发起一个任务就 +1。响应回来时若 gen 已经变了，说明这个结果**迟到了**
+   * （用户取消了、或者又问了新的），必须丢掉：不写进对话、不播报。
+   * 任务卡原话是「取消后迟到结果不得重新播放或触发动作；新任务不被旧任务结果覆盖」，
+   * 用一个单调递增的代数就能判定，不需要记住谁被取消了。 */
+  let gen = 0;
+  let ctl = null;          /* 在途请求的 AbortController */
+
+  function newReqId(g) {
+    return 'r-' + Date.now().toString(36) + '-' + g;
+  }
+
   async function send(text, fromVoice) {
     text = (text || '').trim();
-    if (!text || busy) return;
+    if (!text) return;
+    /* 正在跑的时候又发一句：**不能说"没反应"**。
+     * 直接 return 会让人以为消息丢了，于是一遍遍重发；而静默排队又会
+     * 让"新任务"被旧任务的结果盖住（正是任务卡警告的情形）。
+     * 这里明确告诉人：上一个还在跑，要打断就按停止。 */
+    if (busy) {
+      state.textContent = '上一个还在处理，先按停止';
+      setTimeout(() => { if (busy) state.textContent = '处理中…'; }, 2500);
+      return;
+    }
+
+    const myGen = ++gen;
+    const reqId = newReqId(myGen);
+    const t0 = performance.now();
+    ctl = new AbortController();
+
     busy = true;
     btn.disabled = true;
+    stopBtn.disabled = false;
     state.textContent = '处理中…';
     state.className = 'tag';
-    addMsg('me', text, fromVoice ? [{ t: '语音输入', k: 'ok' }] : null);
+    addMsg('me', text, (fromVoice ? [{ t: '语音输入', k: 'ok' }] : [])
+                       .concat([{ t: reqId }]));
     const wait = addMsg('bot', '（模型正在解析意图…）');
-    wait.querySelector('.body').textContent = '（模型正在解析意图…）';
 
     try {
       const r = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text })
+        body: JSON.stringify({ text: text, req_id: reqId }),
+        signal: ctl.signal
       });
       const d = await r.json();
+
+      /* 迟到的结果：这次请求已经不是"当前任务"了 */
+      if (myGen !== gen) {
+        const box = wait.querySelector('.body');
+        if (box) box.textContent = '（已取消，结果已隔离 —— 不播报、不改变当前状态）';
+        console.info('[nl] 迟到结果已隔离', reqId, d.intent);
+        return;
+      }
+
       const meta = [];
       if (d.intent) meta.push({ t: '意图 ' + d.intent, k: d.intent === 'unclear' || d.intent === 'unsupported' ? 'bad' : 'ok' });
       if (d.tool) meta.push({ t: '工具 ' + d.tool, k: 'ok' });
       if (d.error) meta.push({ t: '未执行 ' + d.error, k: 'bad' });
-      if (d.elapsed_s !== undefined) meta.push({ t: d.elapsed_s + ' 秒' });
+      if (d.elapsed_s !== undefined) meta.push({ t: '服务端 ' + d.elapsed_s + ' 秒' });
       const tr = d.tool_result || {};
       if (tr.status) meta.push({ t: '状态 ' + tr.status, k: tr.status === 'done' ? 'ok' : 'bad' });
       if (tr.samples_in_db !== undefined && tr.samples_in_db !== null) {
@@ -2237,6 +2282,12 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
                     k: tr.samples_in_db > 0 ? 'ok' : 'bad' });
       }
       if (d.device_id) meta.push({ t: '设备 ' + d.device_id });
+      /* 任务卡「后2学时」要求量"输入结束到首次反馈"和"到任务完成"：
+       * 首反馈是界面立刻变成"处理中"，所以量出来接近 0 —— 这本身是结论
+       * （反馈是即时的），不是没测。 */
+      const total = (performance.now() - t0) / 1000;
+      meta.push({ t: '总耗时 ' + total.toFixed(1) + ' 秒' });
+
       wait.querySelector('.body').textContent = d.reply || '（没有回答）';
       const m = wait.querySelector('.nlmeta');
       if (m) m.remove();
@@ -2244,29 +2295,57 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
         const mm = document.createElement('div');
         mm.className = 'nlmeta';
         meta.forEach(t => {
-          const s = document.createElement('span');
-          s.textContent = t.t;
-          if (t.k) s.className = t.k;
-          mm.appendChild(s);
+          const sp = document.createElement('span');
+          sp.textContent = t.t;
+          if (t.k) sp.className = t.k;
+          mm.appendChild(sp);
         });
         wait.appendChild(mm);
       }
       state.textContent = d.ok ? '完成' : '已拒绝';
-      state.className = 'tag ' + (d.ok ? '' : '');
-      /* 播报放在最后：先让文字结果落地，再出声。
-         顺序反过来的话，播报一慢，用户会以为"没反应"而重复点击。 */
+      /* 播报放最后：先让文字落地再出声，否则播报一慢，用户会以为"没反应"。 */
       if (speakOn && speakOn.checked && d.reply) speak(d.reply);
-      } catch (e) {
-        wait.querySelector('.body').textContent = '请求失败：' + String(e);
-        state.textContent = '出错';
-        /* 语音进来的请求失败时，别把标签留在"执行中…" ——
-           那会让人以为还在跑。文字入口本身没受影响，可以说清。 */
-        if (fromVoice) setVoice('执行失败（文字入口仍可用）', 'bad');
+    } catch (e) {
+      const aborted = (e && (e.name === 'AbortError'));
+      if (myGen !== gen || aborted) {
+        const box = wait.querySelector('.body');
+        if (box) box.textContent = '（已取消）';
+        return;                       /* 取消导致的失败不算错误 */
+      }
+      wait.querySelector('.body').textContent = '请求失败：' + String(e);
+      state.textContent = '出错';
+      if (fromVoice) setVoice('执行失败（文字入口仍可用）', 'bad');
     } finally {
-      busy = false;
-      btn.disabled = false;
-      input.focus();
+      if (myGen === gen) {            /* 只有"还是当前任务"才复位界面 */
+        busy = false;
+        btn.disabled = false;
+        stopBtn.disabled = true;
+        input.focus();
+      }
     }
+  }
+
+  /* —— 停止：三件事一起做，少一件都只是"看起来取消了" —— *
+   * 1) 代数 +1，让在途响应作废（迟到结果不写、不播）
+   * 2) abort 掉 fetch，别让连接挂着
+   * 3) 停掉正在念的播报，状态回空闲                                              */
+  function stopAll(why) {
+    const hadBusy = busy || speechSynthesis.speaking;
+    gen++;                            /* 关键：在途请求立刻变成"迟到" */
+    if (ctl) { try { ctl.abort(); } catch (e) {} }
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    busy = false;
+    btn.disabled = false;
+    stopBtn.disabled = true;
+    state.textContent = hadBusy ? '已取消' : '空闲';
+    state.className = 'tag';
+    if (hadBusy) {
+      addMsg('bot', '已取消：' + why + '。在途结果不会再出现，也不会播报。',
+             [{ t: '已取消', k: 'bad' }]);
+      if (micBtn && micBtn.innerText === '结束录音') { try { micBtn.click(); } catch (e) {} }
+      setVoice('已取消', '');
+    }
+    input.focus();
   }
 
   btn.addEventListener('click', () => {
@@ -2284,6 +2363,19 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
   });
   document.querySelectorAll('#nlChips button[data-q]').forEach(b => {
     b.addEventListener('click', () => send(b.dataset.q));
+  });
+
+  /* 第6周：停止的两个入口 —— 按钮 + Esc。
+   * 为什么要留文字/键盘入口：任务卡「备用路径」原话是
+   * 「保留文字停止按钮」—— 语音链路出问题时，停止必须还能用。 */
+  if (stopBtn) {
+    stopBtn.disabled = true;
+    stopBtn.addEventListener('click', () => stopAll('你按了停止'));
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.getAttribute('data-tab') === 'nl') {
+      stopAll('你按了 Esc');
+    }
   });
 
   /* 显示当前用的是哪个运行时模型（只有主机名和模型名，没有密钥） */
