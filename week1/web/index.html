@@ -1947,6 +1947,9 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
   if (!log || !input || !btn) return;
 
     let busy = false;
+    /* 在途任务的原文。取消后把它填回输入框：人反悔时最需要的是
+     * 「刚才那句再来一次」，而不是重新打一遍。 */
+    let inflightText = '';
 
     /* ================= 第5周：语音入口 =================
      * 录音在浏览器里做（Web Audio 直接取 PCM），不走 MediaRecorder：
@@ -2279,6 +2282,7 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
 
     const myGen = ++gen;
     const reqId = newReqId(myGen);
+    inflightText = text;
     const t0 = performance.now();
     ctl = new AbortController();
 
@@ -2409,6 +2413,7 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
         busy = false;
         btn.disabled = false;
         stopBtn.disabled = true;
+        inflightText = '';
         input.focus();
       }
     }
@@ -2429,8 +2434,20 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
     state.textContent = hadBusy ? '已取消' : '空闲';
     state.className = 'tag';
     if (hadBusy) {
-      addMsg('bot', '已取消：' + why + '。在途结果不会再出现，也不会播报。',
+      /* 「反悔后安全恢复」的落地——任务卡「提交与迁移」点名的那条规则：
+       * ① 不自动重发：反悔要由人再按一次。否则"取消"就变成"稍后自动执行"，
+       *    比不取消更危险（人以为停了，其实还在采）。
+       * ② 把那句话填回输入框：省去重打，代价几乎为零。
+       * ③ 说清取消的边界：设备指令**不会**被撤回。 */
+      addMsg('bot',
+             '已取消：' + why + '。在途结果不会再出现，也不会播报。\n\n'
+             + '如果这条是采集请求且已经下发，设备仍会照常采完 —— '
+             + '取消只是本页不再采用结果，不是撤回设备指令。',
              [{ t: '已取消', k: 'bad' }]);
+      if (inflightText && !input.value.trim()) {
+        input.value = inflightText;     /* 填回去，但不发 */
+        input.select();
+      }
       if (micBtn && micBtn.innerText === '结束录音') { try { micBtn.click(); } catch (e) {} }
       setVoice('已取消', '');
     }
