@@ -918,9 +918,21 @@ typedef enum {
     LED_PAT_FAIL,       /* 有上报失败：快闪 5 次 —— "没送出去" */
     LED_PAT_REPLY_ACK,  /* 远端有人回应：慢闪 4 次 —— "有人理我了"（任务卡：迁移确认机制） */
     LED_PAT_REPLY_CANCEL, /* 求助被取消：长亮 1 秒 —— "这事结束了"（任务卡：迁移取消机制） */
+    /* 第5周：录音的开始 / 结束必须能一眼分开。
+     * 原来的问题是开始录音借用 LED_PAT_KEY（和按普通键一模一样），
+     * 结束录音干脆没有灯效 —— 站在板子边上根本判断不出"现在到底在不在录"。
+     * 现在的主判据是**灯的稳态**：亮着 = 正在录，灭着 = 没在录。 */
+    LED_PAT_REC_START,  /* 开始录音：短亮一下 → **常亮**（一直亮着就是在录） */
+    LED_PAT_REC_STOP,   /* 结束录音：先灭 → 短闪 2 下 → 灭（灯灭了就是录完了） */
 } led_pattern_t;
 
 static QueueHandle_t s_led_q;
+
+/* 录音期间把灯钉在常亮。为什么需要这个标志而不是直接查 mic_recording()：
+ * 录音期间用户仍可能按那四个求助键，灯效会插进来播（并以"灭"收尾），
+ * 一插就把"亮着=正在录"这个信号打断。有这个标志，任何别的灯效播完都会
+ * 自动把灯重新点亮；只有 REC_STOP 才允许它灭。 */
+static volatile bool s_led_hold = false;
 
 /* ⚠️ 开漏输出 + 拉低点亮。绝不驱动为高电平（官方指南：上拉可能烧 LED）。 */
 static void led_raw(bool on)
@@ -967,6 +979,24 @@ static void led_play(led_pattern_t p)
         led_raw(true);  vTaskDelay(pdMS_TO_TICKS(1000));
         led_raw(false);
         break;
+    /* 录音开始 / 结束 —— 这两个是**镜像**的，靠最终稳态区分：
+     *   开始：短亮一下 → 常亮（暗→亮，且一直亮）
+     *   结束：灭 → 短闪 2 下 → 灭（亮→暗，且一直灭）
+     * 中间那几下只是"变更提示"，真正用来判断"在不在录"的是最后停在哪一态。 */
+    case LED_PAT_REC_START:
+        led_raw(true);  vTaskDelay(pdMS_TO_TICKS(80));
+        led_raw(false); vTaskDelay(pdMS_TO_TICKS(120));
+        led_raw(true);                     /* 常亮，直到 REC_STOP */
+        s_led_hold = true;
+        break;
+    case LED_PAT_REC_STOP:
+        s_led_hold = false;                /* 先解除保持，否则播完会被重新点亮 */
+        led_raw(false); vTaskDelay(pdMS_TO_TICKS(250));
+        for (int i = 0; i < 2; i++) {
+            led_raw(true);  vTaskDelay(pdMS_TO_TICKS(80));
+            led_raw(false); vTaskDelay(pdMS_TO_TICKS(80));
+        }
+        break;
     case LED_PAT_OFF:
     default:
         led_raw(false);
@@ -980,6 +1010,11 @@ static void led_task(void *arg)
     while (1) {
         if (xQueueReceive(s_led_q, &p, portMAX_DELAY) == pdTRUE) {
             led_play(p);
+            /* 录音期间别的灯效（比如按求助键的短亮）播完会把灯留在"灭"，
+             * 那样"亮着=正在录"就断了。这里统一补回来。 */
+            if (s_led_hold) {
+                led_raw(true);
+            }
         }
     }
 }
@@ -1411,17 +1446,33 @@ static void boot_btn_task(void *arg)
                 last = v;
                 if (v == 0) {                    /* 按下 */
                     if (!mic_recording()) {
-                        if (mic_start() == ESP_OK) {
-                            ESP_LOGI(TAG, "======== 开始录音（再按一下 BOOT 结束）========");
-                            led_signal(LED_PAT_KEY);
+                        if (s_rec_stop_req) {
+                            /* 上一段还在等上传：这时开新一段会把 WAV 缓冲冲掉 */
+                            ESP_LOGW(TAG, "上一段还在上传，这次按键忽略");
+                        } else if (mic_start() == ESP_OK) {
+                            ESP_LOGI(TAG, "======== 开始录音（灯常亮＝正在录；再按一下 BOOT 结束）========");
+                            led_signal(LED_PAT_REC_START);
                         }
                     } else {
                         s_rec_stop_req = true;   /* 交给主循环收尾 */
+                        /* 结束的反馈必须在这里立刻播：主循环要等这一秒的定时上报走完，
+                         * 晚几百毫秒的话，人已经松手了才看到灯变化，等于没有反馈。 */
+                        led_signal(LED_PAT_REC_STOP);
+                        ESP_LOGI(TAG, "======== 结束录音，开始上传 ========");
                     }
                 }
             }
         } else {
             cnt = 0;
+        }
+
+        /* —— 第5周：录满上限时没人按键，但采集已经自己停了 ——
+         * 以前这里什么都不做：灯灭了、也不上传，再按 BOOT 会**重新开一段**，
+         * 上一段直接丢。现在补一次"结束并上传"，把自动停止变成正常收尾。 */
+        if (mic_take_auto_stop()) {
+            s_rec_stop_req = true;
+            led_signal(LED_PAT_REC_STOP);
+            ESP_LOGW(TAG, "======== 录满 5 秒上限，自动结束并上传 ========");
         }
         vTaskDelay(pdMS_TO_TICKS(20));
     }

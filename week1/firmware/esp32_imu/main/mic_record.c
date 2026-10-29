@@ -37,6 +37,7 @@ static TaskHandle_t      s_task;
 static volatile bool     s_run;
 static volatile size_t   s_len;
 static volatile bool     s_truncated;
+static volatile bool     s_auto_stop;    /* 录满上限自己停了，等主逻辑来收尾 */
 static int16_t          *s_pcm;          /* PSRAM：纯 PCM */
 static uint8_t          *s_wav;          /* PSRAM：44 字节头 + PCM，上传用 */
 
@@ -88,6 +89,7 @@ static void mic_task(void *arg)
         for (size_t i = 0; i < n; i++) {
             if (s_len >= MIC_MAX_SAMPLES) {
                 s_truncated = true;
+                s_auto_stop = true;      /* 告诉主逻辑：我没等人按键，自己停了 */
                 s_run = false;
                 break;
             }
@@ -99,6 +101,7 @@ static void mic_task(void *arg)
         }
         if (s_len >= MIC_MAX_SAMPLES) {
             s_truncated = true;
+            s_auto_stop = true;
             s_run = false;
         }
     }
@@ -167,6 +170,15 @@ bool mic_recording(void)
     return s_run;
 }
 
+bool mic_take_auto_stop(void)
+{
+    if (!s_auto_stop) {
+        return false;
+    }
+    s_auto_stop = false;      /* 取一次就清，避免主逻辑反复补同一次结束 */
+    return true;
+}
+
 esp_err_t mic_start(void)
 {
     if (!inited) {
@@ -180,6 +192,7 @@ esp_err_t mic_start(void)
     }
     s_len = 0;
     s_truncated = false;
+    s_auto_stop = false;
     s_run = true;
     if (xTaskCreate(mic_task, "mic_rec", 4096, NULL, 6, &s_task) != pdPASS) {
         s_run = false;
