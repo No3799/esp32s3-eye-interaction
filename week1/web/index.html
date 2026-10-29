@@ -2044,6 +2044,7 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
 
     async function stopRec() {
       if (!rec) return;
+      const endT0 = performance.now();   /* 人按下"结束录音"的那一刻 */
       const r = rec; rec = null;
       micBtn.textContent = '开始录音';
       micBtn.classList.remove('recording');
@@ -2061,20 +2062,30 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
       let off = 0; r.chunks.forEach(c => { flat.set(c, off); off += c.length; });
       const blob = encodeWav(downsample(flat, r.rate, 16000), 16000);
       const secs2 = secs.toFixed(1);
-      await uploadAndSend(blob, '录音 ' + secs2 + ' 秒');
+      await uploadAndSend(blob, '录音 ' + secs2 + ' 秒', endT0);
     }
 
     /* 上传 + 识别 + 交给第4周入口。
      * 录音和"选文件"两条来源共用这一段：来源不同，处理必须一样，
      * 否则"同一段话录音能识别、文件不能"就成了新的不一致。 */
-    async function uploadAndSend(blob, label) {
-      setVoice('识别中…（' + label + ' / ' + (blob.size / 1024).toFixed(0) + ' KB）', 'ok');
-      try {
-        const resp = await fetch('/api/asr', {
-          method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: blob
-        });
-        const d = await resp.json();
-        if (!d.ok) {
+      async function uploadAndSend(blob, label, endT0) {
+        setVoice('识别中…（' + label + ' / ' + (blob.size / 1024).toFixed(0) + ' KB）', 'ok');
+        /* 识别是一段独立的等待：录音结束 → 出文字。任务卡要的"输入结束到首次反馈"
+         * 在语音这条路上不止一段，所以分段记，别只给一个总数。 */
+        const asrT0 = performance.now();
+        try {
+          const resp = await fetch('/api/asr', {
+            method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: blob
+          });
+          const d = await resp.json();
+          TIMING.push({
+            kind: 'asr', label: label, bytes: blob.size,
+            end_ms: (endT0 === undefined ? null : +(performance.now() - endT0).toFixed(0)),
+            total_ms: +(performance.now() - asrT0).toFixed(0),
+            server_s: (d.elapsed_s === undefined ? null : d.elapsed_s),
+            text: d.text || '', error: d.error || null, ok: !!d.ok
+          });
+          if (!d.ok) {
           setVoice(d.reply || '没听清', 'bad');
           addMsg('bot', d.reply || '（没听清）',
                  [{ t: '语音 ' + (d.error || '失败'), k: 'bad' }, { t: d.elapsed_s + ' 秒' }]);
@@ -2226,6 +2237,17 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
   let gen = 0;
   let ctl = null;          /* 在途请求的 AbortController */
 
+  /* —— 第6周：时序留痕 —— *
+   * 任务卡要求「测量输入结束到首次反馈与任务完成的时间」。
+   * 只把总耗时显示在界面上（原来那样）核对不了，也没法比较两次，
+   * 所以每次任务往 window.__timing 里记一条，验收脚本直接读。
+   *
+   * 首反馈为什么用双 rAF：把状态改成"处理中…"是同步赋值，
+   * 那一刻量出来永远是 0 —— 那量的是代码顺序，不是人看到的延迟。
+   * 双 rAF 拿到的是"这一帧已经画上去了"的时刻，才是屏幕上真的变了。 */
+  const TIMING = [];
+  try { window.__timing = TIMING; } catch (e) {}
+
   /* 会话 id：服务端靠它把"上一轮问了什么"记在这个会话名下。
    * 存在 localStorage 里 —— 刷新页面不该让上下文丢掉，但也不用登录。 */
   const sid = (() => {
@@ -2269,6 +2291,12 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
                        .concat([{ t: reqId }]));
     const wait = addMsg('bot', '（模型正在解析意图…）');
 
+    /* 首反馈的时刻：不 await、不挡住 fetch，只是记下来 */
+    let fbMs = null;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      fbMs = performance.now() - t0;
+    }));
+
     try {
       const r = await fetch('/api/ask', {
         method: 'POST',
@@ -2278,13 +2306,22 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
       });
       const d = await r.json();
 
-      /* 迟到的结果：这次请求已经不是"当前任务"了 */
-      if (myGen !== gen) {
-        const box = wait.querySelector('.body');
-        if (box) box.textContent = '（已取消，结果已隔离 —— 不播报、不改变当前状态）';
-        console.info('[nl] 迟到结果已隔离', reqId, d.intent);
-        return;
-      }
+        /* 迟到的结果：这次请求已经不是"当前任务"了 */
+        if (myGen !== gen) {
+          const box = wait.querySelector('.body');
+          if (box) box.textContent = '（已取消，结果已隔离 —— 不播报、不改变当前状态）';
+          console.info('[nl] 迟到结果已隔离', reqId, d.intent);
+          /* 迟到的也要记：它回来花了多久，正是"取消后还会不会再响"的证据 */
+          TIMING.push({
+            kind: fromVoice ? 'voice' : 'text', reqId: reqId, text: text,
+            fb_ms: fbMs === null ? null : +fbMs.toFixed(1),
+            total_ms: +(performance.now() - t0).toFixed(0),
+            server_s: (d.elapsed_s === undefined ? null : d.elapsed_s),
+            intent: d.intent || null, tool: d.tool || null, ok: !!d.ok,
+            cancelled: true
+          });
+          return;
+        }
 
       const meta = [];
       if (d.intent) meta.push({ t: '意图 ' + d.intent, k: d.intent === 'unclear' || d.intent === 'unsupported' ? 'bad' : 'ok' });
@@ -2297,12 +2334,18 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
         meta.push({ t: '新观测 ' + tr.samples_in_db + ' 条',
                     k: tr.samples_in_db > 0 ? 'ok' : 'bad' });
       }
-      if (d.device_id) meta.push({ t: '设备 ' + d.device_id });
-      /* 任务卡「后2学时」要求量"输入结束到首次反馈"和"到任务完成"：
-       * 首反馈是界面立刻变成"处理中"，所以量出来接近 0 —— 这本身是结论
-       * （反馈是即时的），不是没测。 */
-      const total = (performance.now() - t0) / 1000;
-      meta.push({ t: '总耗时 ' + total.toFixed(1) + ' 秒' });
+        if (d.device_id) meta.push({ t: '设备 ' + d.device_id });
+        /* 任务卡「后2学时」要求量"输入结束到首次反馈"和"到任务完成"。
+         * 首反馈现在用双 rAF 量（这一帧真画上去了），所以它不再是恒为 0 的假数：
+         * 通常是 1~2 帧（16~35 ms），人眼已经是"按下就变了"。
+         * 两段都显示，是为了让"慢"能定位到哪一段 —— 服务端慢和网络慢修法不同。 */
+        const total = (performance.now() - t0) / 1000;
+        if (fbMs !== null) meta.push({ t: '首反馈 ' + fbMs.toFixed(0) + ' ms', k: 'ok' });
+        if (d.elapsed_s !== undefined && d.elapsed_s !== null) {
+          const net = Math.max(0, total - d.elapsed_s);
+          meta.push({ t: '往返+渲染 ' + Math.round(net * 1000) + ' ms' });
+        }
+        meta.push({ t: '总耗时 ' + total.toFixed(1) + ' 秒' });
 
       wait.querySelector('.body').textContent = d.reply || '（没有回答）';
       const m = wait.querySelector('.nlmeta');
@@ -2319,6 +2362,14 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
         wait.appendChild(mm);
       }
       state.textContent = d.ok ? '完成' : '已拒绝';
+      TIMING.push({
+        kind: fromVoice ? 'voice' : 'text', reqId: reqId, text: text,
+        fb_ms: fbMs === null ? null : +fbMs.toFixed(1),
+        total_ms: +(performance.now() - t0).toFixed(0),
+        server_s: (d.elapsed_s === undefined ? null : d.elapsed_s),
+        intent: d.intent || null, tool: d.tool || null, ok: !!d.ok,
+        cancelled: false
+      });
       /* 追问选项：服务端把"我在问你什么"结构化返回了，这里渲染成按钮。
        * 点一下就把那个文本发出去 —— 下一句短回答（"查看"）服务端能接住，
        * 因为它在上一轮的上下文里（见 turn_context.py）。 */
@@ -2337,12 +2388,19 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
       /* 播报放最后：先让文字落地再出声，否则播报一慢，用户会以为"没反应"。 */
       if (speakOn && speakOn.checked && d.reply) speak(d.reply);
     } catch (e) {
-      const aborted = (e && (e.name === 'AbortError'));
-      if (myGen !== gen || aborted) {
-        const box = wait.querySelector('.body');
-        if (box) box.textContent = '（已取消）';
-        return;                       /* 取消导致的失败不算错误 */
-      }
+        const aborted = (e && (e.name === 'AbortError'));
+        if (myGen !== gen || aborted) {
+          const box = wait.querySelector('.body');
+          if (box) box.textContent = '（已取消）';
+          TIMING.push({
+            kind: fromVoice ? 'voice' : 'text', reqId: reqId, text: text,
+            fb_ms: fbMs === null ? null : +fbMs.toFixed(1),
+            total_ms: +(performance.now() - t0).toFixed(0),
+            server_s: null, intent: null, tool: null, ok: false,
+            cancelled: true, aborted: true
+          });
+          return;                       /* 取消导致的失败不算错误 */
+        }
       wait.querySelector('.body').textContent = '请求失败：' + String(e);
       state.textContent = '出错';
       if (fromVoice) setVoice('执行失败（文字入口仍可用）', 'bad');

@@ -49,7 +49,7 @@ def click_real(ws: WS, selector: str) -> dict:
     """
     box = js(ws, f"""
       (function() {{
-        const el = document.querySelector({json.dumps(selector)});
+        const el = document.querySelector({json.dumps(selector, ensure_ascii=False)});
         if (!el) return {{ok:false, reason:'no such element'}};
         const r = el.getBoundingClientRect();
         const cs = getComputedStyle(el);
