@@ -57,6 +57,7 @@ from camera_relay import CameraRelay, CLIENT_BOUNDARY, FRAME_BOUNDARY
 from commands import CommandStore
 from help import HelpStore
 from nl_agent import LLMClient, NLAgent
+from turn_context import TurnContext
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -260,6 +261,9 @@ RELAY = CameraRelay(latest_ip_fn=latest_device_ip)
 LLM = LLMClient()
 AGENT = NLAgent(LLM, CONN, LOCK, COMMANDS, DEVICE_STATE,
                 stale_seconds=STALE_SECONDS)
+
+# 第6周：有限多轮上下文。只记"上一轮问了什么"，TTL 180 秒、最多 200 个会话。
+CONTEXT = TurnContext(ttl=180.0, max_sessions=200)
 
 
 def row_to_dict(row: sqlite3.Row) -> dict:
@@ -1062,6 +1066,9 @@ class Handler(BaseHTTPRequestHandler):
         # 服务端只负责**回显 + 落到日志**，不参与取消决策（取消是客户端的事，
         # 因为服务端一旦开始执行工具，中途停掉反而会留下"指令发了没人收"的烂摊子）。
         req_id = str(body.get("req_id") or "").strip()[:64]
+        # 会话 id：由前端生成并持久化（localStorage）。服务端只用它索引
+        # "上一轮问了什么"，不存对话内容。
+        sid = str(body.get("session_id") or "").strip()[:64]
 
         # 第6周备用路径：延迟注入。任务卡「备用路径」写的是
         # 「网络模型不稳定时用延迟注入复现状态错误」——只有 --fault-injection
@@ -1076,7 +1083,7 @@ class Handler(BaseHTTPRequestHandler):
                 time.sleep(delay_ms / 1000.0)
 
         try:
-            result = AGENT.handle(text)
+            result = AGENT.handle(text, ctx={"pending": CONTEXT.get_pending(sid)} if sid else None)
         except Exception as e:
             # 兜底：助手内部出错时**不能**假装成功，也不能静默
             print(f"[ask] 助手异常: {e}")
@@ -1089,6 +1096,15 @@ class Handler(BaseHTTPRequestHandler):
 
         # 注意：**不要**把 llm 的 base_url / api_key 之类回传。
         # AGENT.public_info() 只暴露主机名、模型名、是否有密钥。
+        # 这一轮回答了上一轮的提问（或反之）都要更新上下文：
+        # 又问了 → 记下新问题；接住了/正常解析 → 清掉，避免下一次误接。
+        if sid:
+            if result.get("clarify"):
+                CONTEXT.set_pending(sid, result["clarify"])
+                print(f"[ask] 追问已记入上下文 session={sid} "
+                      f"（当前 {CONTEXT.stats()['sessions']} 个会话）")
+            else:
+                CONTEXT.clear(sid)
         result["req_id"] = req_id
         print(f"[ask] req_id={req_id or '-'} 「{text[:40]}」→ intent={result.get('intent')} "
               f"tool={result.get('tool')} ok={result.get('ok')} "

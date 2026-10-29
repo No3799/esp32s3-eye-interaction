@@ -207,6 +207,16 @@ class LLMClient:
 # ---------------------------------------------------------------------------
 # 意图解析的提示词
 # ---------------------------------------------------------------------------
+# 封闭式问题的答案别名：只收"明显属于某一边"的说法。
+# 模棱两可的（只回"嗯""好"）宁可再问一次 —— 猜错一次就会执行一个用户没要求的动作。
+_CLARIFY_ALIASES = {
+    "query_latest": ("查看", "看下", "看看", "看一下", "看", "读", "上次", "已有",
+                     "记录", "现在多少", "当前值", "现在的数"),
+    "request_recollect": ("采集", "采一次", "采一批", "重新", "再采", "再来一次",
+                          "新的", "现在采"),
+}
+
+
 INTENT_SYSTEM = """你是传感数据平台的**意图解析器**。你的唯一职责：
 把用户的一句中文，转成一个 JSON 对象。你**不查数据、不执行命令、不回答问题**。
 
@@ -577,6 +587,36 @@ class NLAgent:
         return ("这件事超出了本系统当前的能力范围。\n\n"
                 "本系统目前只支持两件事：读取已有记录、请求设备重新采集一次。")
 
+    # ---------------- 多轮：把短回答接回上一轮的问题 ----------------
+    def _resolve_from_pending(self, text: str, pending: dict) -> str | None:
+        """把一句短回答落到上一轮问题给出的某个选项上；接不住就返回 None。
+
+        两条自限规则，都是为了**宁可不猜**：
+          · 长度 > 16 字 → 这多半是新的一句话，不是"选一个"，交回模型
+          · 同时命中两边（比如"重新查看"）→ 歧义，交回模型再问一次
+        """
+        t = (text or "").strip()
+        if not t or len(t) > 16:
+            return None
+        allowed = [o.get("intent") for o in (pending.get("options") or [])
+                   if o.get("intent")]
+        scored = []                       # [(intent, 命中的最长别名长度)]
+        for it in allowed:
+            best = 0
+            for a in _CLARIFY_ALIASES.get(it, ()):
+                if a in t:
+                    best = max(best, len(a))
+            if best:
+                scored.append((it, best))
+        if len(scored) != 1:              # 一个都没中 / 两边都中 → 不猜
+            return None
+        it, best = scored[0]
+        # 单字别名（"看""读"）太容易在一句新话里撞上：
+        # 只在回答很短（≤4 字）时才认它，否则交回模型。
+        if best == 1 and len(t) > 4:
+            return None
+        return it
+
     def _reply_unclear(self, text: str, devices: list[str]) -> str:
         opts = "、".join(devices) if devices else "（暂无）"
         return ("这句话我没能判断出是要**读已有记录**还是**重新采一次**。\n\n"
@@ -610,8 +650,16 @@ class NLAgent:
         return cand, {"polished": True, "reason": "ok"}
 
     # ---------------- 主入口 ----------------
-    def handle(self, text: str) -> dict:
-        """处理一句自然语言，返回结构化结果 + 一段可直接展示的回答。"""
+    def handle(self, text: str, ctx: dict | None = None) -> dict:
+        """处理一句自然语言，返回结构化结果 + 一段可直接展示的回答。
+
+        ctx 是"上一轮问了什么"（`turn_context.TurnContext` 给的）。
+        有人可能问：为什么不把上下文直接喂给模型、让它自己理解？
+        因为上一轮那句是**封闭式问题**（A 还是 B），答案空间只有两个。
+        用规则把「查看」落到 query_latest 上，比再跑一次模型更稳、更快，
+        而且结论可复现（模型对同一个"查看"可能这次给 A、下次给 B）。
+        真正开放的话仍然走模型 —— 规则只处理"封闭问题的短回答"。
+        """
         started = time.time()
         trace: list[dict] = []
         text = (text or "").strip()
@@ -619,51 +667,68 @@ class NLAgent:
             return {"ok": False, "error": "empty", "reply": "请说一句话，比如「查看上次数据」。",
                     "trace": trace}
 
-        # —— ① 模型只负责出意图+参数 ——
-        try:
-            parsed = self.llm.chat_json(INTENT_SYSTEM, "用户说：" + text)
-            trace.append({"step": "intent_parse", "ok": True, "raw": parsed})
-        except Exception as e:
-            # 备用路径：模型侧失败时**不猜**意图、**不执行任何动作**。
-            # 这里必须再分一层：四种失败的修法完全不同，混成一句"服务不可用"
-            # 会让人去重启服务，而真正的原因可能是模型输出不是 JSON。
-            err = str(e)[:200]
-            kind = classify_llm_error(e)
+        # —— ⓪ 先看能不能接住上一轮的提问 ——
+        picked = None
+        if ctx and ctx.get("pending"):
+            picked = self._resolve_from_pending(text, ctx["pending"])
+            trace.append({"step": "context_try", "ok": bool(picked),
+                          "pending_intents": [o.get("intent") for o in
+                                              (ctx["pending"].get("options") or [])],
+                          "picked": picked})
 
-            trace.append({"step": "intent_parse", "ok": False,
-                          "error": err, "error_kind": kind})
+        if picked:
+            # 命中：不调模型，直接当作对应意图
+            parsed = {"intent": picked,
+                      "device_id": ctx["pending"].get("device_id") or "",
+                      "samples": None, "interval_ms": None,
+                      "reason": "对上一轮澄清问题的回答"}
+            trace.append({"step": "intent_parse", "ok": True, "via": "context", "raw": parsed})
+        else:
+            # —— ① 模型只负责出意图+参数 ——
+            try:
+                parsed = self.llm.chat_json(INTENT_SYSTEM, "用户说：" + text)
+                trace.append({"step": "intent_parse", "ok": True, "raw": parsed})
+            except Exception as e:
+                # 备用路径：模型侧失败时**不猜**意图、**不执行任何动作**。
+                # 这里必须再分一层：四种失败的修法完全不同，混成一句"服务不可用"
+                # 会让人去重启服务，而真正的原因可能是模型输出不是 JSON。
+                err = str(e)[:200]
+                kind = classify_llm_error(e)
 
-            # 结构化样例：给**具体实例**而不是占位符。占位符只能说明字段名，
-            # 没法直接拿去比对；实例可以逐字段对照模型的实际输出。
-            sample = {"intent": "unclear", "device_id": "", "samples": None,
-                      "interval_ms": None,
-                      "reason": "模型侧失败（%s），未解析出意图" % kind}
-            hint = {
-                "model_not_found": "服务在跑，但模型没加载。先看 /api/tags 是否为空；"
-                                   "为空就用 week1/启动语言服务.bat 重启（显式指定 OLLAMA_MODELS）。",
-                "model_unreachable": "模型服务没起来。检查 11434 端口是否在监听，必要时启动服务。",
-                "invalid_json": "服务是好的，模型输出不是合法 JSON。看 trace 里的原文，"
-                                "多半要收窄提示词或换更稳的模型。",
-                "model_auth": "服务连上了但拒绝授权。检查 NL_LLM_API_KEY 是否有效。",
-                "model_error": "看 trace 里的原始报错。",
-            }[kind]
+                trace.append({"step": "intent_parse", "ok": False,
+                              "error": err, "error_kind": kind})
 
-            return {
-                "ok": False,
-                "error": "llm_unavailable",
-                "error_kind": kind,
-                # 机器可读的"什么都没做"凭据：验收时可以断言这个列表为空
-                "actions_taken": [],
-                "parse_sample": sample,
-                "reply": ("语言模型服务暂时不可用，我没法判断这句话的意图，"
-                          "所以**没有执行任何采集动作**（也没有下发任何指令）。\n\n"
-                          "失败类别：%s\n"
-                          "排查方向：%s\n\n"
-                          "结构化样例（用于定位解析问题）：\n%s"
-                          % (kind, hint, json.dumps(sample, ensure_ascii=False, indent=2))),
-                "llm": self.llm.public_info(),
-                "trace": trace,
-            }
+                # 结构化样例：给**具体实例**而不是占位符。占位符只能说明字段名，
+                # 没法直接拿去比对；实例可以逐字段对照模型的实际输出。
+                sample = {"intent": "unclear", "device_id": "", "samples": None,
+                          "interval_ms": None,
+                          "reason": "模型侧失败（%s），未解析出意图" % kind}
+                hint = {
+                    "model_not_found": "服务在跑，但模型没加载。先看 /api/tags 是否为空；"
+                                       "为空就用 week1/启动语言服务.bat 重启（显式指定 OLLAMA_MODELS）。",
+                    "model_unreachable": "模型服务没起来。检查 11434 端口是否在监听，必要时启动服务。",
+                    "invalid_json": "服务是好的，模型输出不是合法 JSON。看 trace 里的原文，"
+                                    "多半要收窄提示词或换更稳的模型。",
+                    "model_auth": "服务连上了但拒绝授权。检查 NL_LLM_API_KEY 是否有效。",
+                    "model_error": "看 trace 里的原始报错。",
+                }[kind]
+
+                return {
+                    "ok": False,
+                    "error": "llm_unavailable",
+                    "error_kind": kind,
+                    # 机器可读的"什么都没做"凭据：验收时可以断言这个列表为空
+                    "actions_taken": [],
+                    "parse_sample": sample,
+                    "reply": ("语言模型服务暂时不可用，我没法判断这句话的意图，"
+                              "所以**没有执行任何采集动作**（也没有下发任何指令）。\n\n"
+                              "失败类别：%s\n"
+                              "排查方向：%s\n\n"
+                              "结构化样例（用于定位解析问题）：\n%s"
+                              % (kind, hint, json.dumps(sample, ensure_ascii=False, indent=2))),
+                    "llm": self.llm.public_info(),
+                    "trace": trace,
+                }
 
         intent = str(parsed.get("intent") or "").strip().lower()
         asked_device = str(parsed.get("device_id") or "").strip()
@@ -688,9 +753,23 @@ class NLAgent:
 
         if intent == "unclear":
             reply = self._reply_unclear(text, device_ids)
-            return self._pack(ok=True, intent=intent, reply=reply, trace=trace,
-                              device_id=device_id, reason=reason,
-                              started=started, tool=None, tool_args={})
+            out = self._pack(ok=True, intent=intent, reply=reply, trace=trace,
+                             device_id=device_id, reason=reason,
+                             started=started, tool=None, tool_args={})
+            # 把"我到底在问你什么"结构化成选项：下一句短回答（"查看"/"采集"）
+            # 靠它就能接上（见 _resolve_from_pending）。前端也用它渲染成按钮，
+            # 省得用户再打一遍字。
+            out["clarify"] = {
+                "question": "你是想读已有记录，还是让设备现在再采一次？",
+                "options": [
+                    {"intent": "query_latest", "label": "查看已有记录",
+                     "text": "查看上次数据"},
+                    {"intent": "request_recollect", "label": "现在重新采集",
+                     "text": "重新采集一次"},
+                ],
+                "device_id": device_id,
+            }
+            return out
 
         if device_id is None:
             # 设备范围不通过：明确说不执行，**不猜一个设备替用户做主**

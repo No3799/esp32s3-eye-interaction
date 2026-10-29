@@ -203,6 +203,10 @@
   .nlrow input { flex: 1; min-width: 0; }
   .nlrow button.stop { background: transparent; border: 1px solid var(--border); color: var(--muted); }
   .nlrow button.stop:hover { color: var(--text); border-color: var(--muted); }
+  .nlclarify { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .nlclarify button { background: var(--surface-3); border: 1px solid var(--border);
+                      color: var(--text); border-radius: var(--r-sm); padding: 4px 10px; font-size: 13px; }
+  .nlclarify button:hover { border-color: var(--muted); }
 
   /* 第5周：语音行。录音按钮在录音时要有明显的状态变化 ——
      否则用户不知道"到底开没开麦"（这是走查里发现的同类问题：
@@ -2222,6 +2226,18 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
   let gen = 0;
   let ctl = null;          /* 在途请求的 AbortController */
 
+  /* 会话 id：服务端靠它把"上一轮问了什么"记在这个会话名下。
+   * 存在 localStorage 里 —— 刷新页面不该让上下文丢掉，但也不用登录。 */
+  const sid = (() => {
+    let v = null;
+    try { v = localStorage.getItem('nl_sid'); } catch (e) {}
+    if (!v) {
+      v = 's-' + Math.random().toString(36).slice(2, 10);
+      try { localStorage.setItem('nl_sid', v); } catch (e) {}
+    }
+    return v;
+  })();
+
   function newReqId(g) {
     return 'r-' + Date.now().toString(36) + '-' + g;
   }
@@ -2257,7 +2273,7 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
       const r = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text, req_id: reqId }),
+        body: JSON.stringify({ text: text, req_id: reqId, session_id: sid }),
         signal: ctl.signal
       });
       const d = await r.json();
@@ -2303,6 +2319,21 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
         wait.appendChild(mm);
       }
       state.textContent = d.ok ? '完成' : '已拒绝';
+      /* 追问选项：服务端把"我在问你什么"结构化返回了，这里渲染成按钮。
+       * 点一下就把那个文本发出去 —— 下一句短回答（"查看"）服务端能接住，
+       * 因为它在上一轮的上下文里（见 turn_context.py）。 */
+      if (d.clarify && Array.isArray(d.clarify.options) && d.clarify.options.length) {
+        const wrap = document.createElement('div');
+        wrap.className = 'nlclarify';
+        d.clarify.options.forEach(o => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = o.label;
+          b.addEventListener('click', () => { wrap.remove(); send(o.text); });
+          wrap.appendChild(b);
+        });
+        wait.appendChild(wrap);
+      }
       /* 播报放最后：先让文字落地再出声，否则播报一慢，用户会以为"没反应"。 */
       if (speakOn && speakOn.checked && d.reply) speak(d.reply);
     } catch (e) {
