@@ -1472,7 +1472,7 @@ static void boot_btn_task(void *arg)
         if (mic_take_auto_stop()) {
             s_rec_stop_req = true;
             led_signal(LED_PAT_REC_STOP);
-            ESP_LOGW(TAG, "======== 录满 5 秒上限，自动结束并上传 ========");
+            ESP_LOGW(TAG, "======== 录满 10 秒上限，自动结束并上传 ========");
         }
         vTaskDelay(pdMS_TO_TICKS(20));
     }
@@ -1593,11 +1593,17 @@ void app_main(void)
             float  secs = 0;
             bool   trunc = false;
             if (mic_stop(&wav, &wlen, &secs, &trunc) == ESP_OK && wav && wlen > 44) {
-                bool ok = http_post_binary(PATH_AUDIO, wav, wlen, resp, sizeof(resp)) == ESP_OK;
+                /* 截断要**告诉服务端**，不能只写在板子日志里：
+                 * 录满上限被切断和"识别不准"在页面上长得一样，
+                 * 不说清楚，人就只会怪模型。 */
+                char apath[64];
+                snprintf(apath, sizeof(apath), "%s%s", PATH_AUDIO,
+                         trunc ? "?truncated=1" : "");
+                bool ok = http_post_binary(apath, wav, wlen, resp, sizeof(resp)) == ESP_OK;
                 led_signal(ok ? LED_PAT_UPLOAD_OK : LED_PAT_FAIL);
                 ESP_LOGI(TAG, "录音上传%s：%.1f 秒 / %u 字节%s",
                          ok ? "成功" : "失败", secs, (unsigned)wlen,
-                         trunc ? "（到 5 秒上限截断）" : "");
+                         trunc ? "（到 10 秒上限截断）" : "");
             }
         }
 

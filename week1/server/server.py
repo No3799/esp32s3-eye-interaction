@@ -1217,7 +1217,7 @@ class Handler(BaseHTTPRequestHandler):
             length = 0
         if length <= 0:
             return self._send_json(400, {"ok": False, "error": "empty_body"})
-        if length > 1024 * 1024:          # 5 秒 16k 单声道约 160KB，1MB 足够
+        if length > 1024 * 1024:          # 10 秒 16k 单声道约 320KB，1MB 留了一倍余量
             self._drain_body(length, 4 * 1024 * 1024)
             return self._send_json(413, {"ok": False, "error": "too_large"})
 
@@ -1234,11 +1234,16 @@ class Handler(BaseHTTPRequestHandler):
 
         res = self._asr_run(wav_path)
         text = (res.get("text") or "").strip()
+        # 板子录满上限被截断时会带 ?truncated=1。这个标记必须留下来 ——
+        # "被切成半句"和"识别不准"在页面上长得一模一样，不区分就会冤到模型头上。
+        qs = parse_qs(urlparse(self.path).query)
+        truncated = (qs.get("truncated", ["0"])[0] or "0").lower() in ("1", "true", "yes")
         entry = {
             "id": os.path.basename(wav_path),
             "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
             "source": "device-mic",
             "bytes": len(raw),
+            "truncated": truncated,
             "asr_elapsed_s": res.get("elapsed_s"),
             "asr_error": res.get("error"),
             "text": text,

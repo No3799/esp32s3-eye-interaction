@@ -8,8 +8,9 @@
  *   变成噪声；按 32bit 读再取高 16 位，等于保留 24 位里的高 16 位，对语音够用。
  *
  * 为什么缓冲放 PSRAM：
- *   5 秒 16k/16bit 单声道是 160KB，内部 RAM 只有两百多 KB 可用，
- *   放进去会把 WiFi/HTTP 的余量吃光。本板 8MB OCT PSRAM，这点占用可以忽略。
+ *   10 秒 16k/16bit 单声道是 320KB（PCM + WAV 两份共 640KB），
+ *   内部 RAM 只有两百多 KB 可用，放进去会把 WiFi/HTTP 的余量吃光。
+ *   本板 8MB OCT PSRAM，空闲 7.84MB，这点占用可以忽略。
  */
 #include "mic_record.h"
 
@@ -28,7 +29,16 @@ static const char *TAG = "mic";
 #define MIC_WS         GPIO_NUM_42
 #define MIC_SD         GPIO_NUM_2
 #define MIC_RATE       16000
-#define MIC_MAX_SEC    5
+/* 录音上限：一开始是 5 秒，实测嫌短 —— 一句话稍微长点（"帮我看看昨天下午之后的数据"）
+ * 说到一半就被切断，而截断在听感上没有提示，只会表现为"识别不准"。
+ * 改成 10 秒的依据：
+ *   · 内存：16k × 2 字节 × 10 秒 = 320KB，PCM 与 WAV 各一份共 640KB；
+ *     板子 PSRAM 空闲 7.84MB，占用约 8%，不构成压力；
+ *   · 上传：320KB 走 WiFi 约 1~3 秒，而 HTTP 超时是 15 秒，留得住余量；
+ *   · 识别：vosk 小模型约 0.5~1 倍实时，10 秒音频 3~8 秒，超时阈值 30 秒。
+ * 再往上（30 秒）就要 1.9MB 内存 + 近 1MB 上传，且上传期间 1Hz 上报一直停着，
+ * 不划算 —— 10 秒是"够说一句话"和"不拖累采集"之间的折中。 */
+#define MIC_MAX_SEC    10
 #define MIC_MAX_SAMPLES (MIC_RATE * MIC_MAX_SEC)
 #define WAV_HDR_BYTES  44
 

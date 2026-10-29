@@ -662,7 +662,7 @@
         <p><b>录音时看灯的稳态，不用数闪几下：</b></p>
         <p><b>灯常亮着</b> ＝ 正在录音 · <b>灯灭着</b> ＝ 没在录音。
         按下 BOOT 开始录时，灯会先短亮一下然后<b>一直亮着</b>；再按一下结束，灯先灭、
-        再短闪 2 下，就彻底灭了。（录满 5 秒会自动停，灯同样是这样熄灭。）</p>
+        再短闪 2 下，就彻底灭了。（录满 10 秒会自动停，灯同样是这样熄灭。）</p>
         <p class="dim">这条是 2026-10-29 补的：在那之前开始录音借用的是"按普通键"的那一下短亮，
         结束录音干脆没有灯效 —— 按的人根本分不清刚才那下是开始还是结束。</p>
         <hr>
@@ -2154,12 +2154,19 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
         if (!ev || ev.id === lastAudioId) return;
         lastAudioId = ev.id;
         if (!ev.text) {
-          addMsg('bot', '板子录音：' + (ev.reply || '没听清'),
-                 [{ t: '来自板子麦克风', k: 'bad' }, { t: ev.ts || '' }]);
+          /* 录满上限被切断时，失败原因往往不是"没听清"而是"只录到半句"。
+             这一条必须写出来，否则人会一遍遍重说同一句话。 */
+          const why = ev.truncated
+            ? '录到 10 秒上限被切断了，最后那段没录进去 —— 请短一点再说一次'
+            : (ev.reply || '没听清');
+          addMsg('bot', '板子录音：' + why,
+                 [{ t: '来自板子麦克风', k: 'bad' }, { t: ev.ts || '' }]
+                   .concat(ev.truncated ? [{ t: '已截断', k: 'bad' }] : []));
           return;
         }
         addMsg('me', ev.text, [{ t: '来自板子麦克风', k: 'ok' }, { t: ev.ts || '' }]);
         const meta = [];
+        if (ev.truncated) meta.push({ t: '录音被截断（10 秒上限）', k: 'bad' });
         if (ev.intent) meta.push({ t: '意图 ' + ev.intent });
         if (ev.tool) meta.push({ t: '工具 ' + ev.tool });
         meta.push({ t: ev.ok ? '完成' : '未完成', k: ev.ok ? 'ok' : 'bad' });

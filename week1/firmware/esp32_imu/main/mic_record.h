@@ -17,7 +17,7 @@ esp_err_t mic_stop(const uint8_t **wav, size_t *len, float *seconds, bool *trunc
 bool mic_recording(void);
 
 /* 是否因为录满上限而自动停了（取一次就清零）。
- * 为什么需要它：录满 5 秒时采集任务自己会停，但主逻辑不知道 ——
+ * 为什么需要它：录满上限时采集任务自己会停，但主逻辑不知道 ——
  * 表现就是"再按一下 BOOT 会重新开一段，上一段直接丢"。
  * 有这个标志，主逻辑才能在录满的那一刻补一次"结束并上传"。 */
 bool mic_take_auto_stop(void);
