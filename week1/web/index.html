@@ -475,6 +475,28 @@
   }
   .morebtn:hover { background: var(--surface-3); color: var(--text); }
 
+  /* 第7周：按需快照 */
+  .snaphint { color: var(--muted); font-size: 12.5px; margin: 6px 0 10px; line-height: 1.6; }
+  .snapwrap { background: var(--surface-2); border: 1px solid var(--border);
+              border-radius: var(--r-md); min-height: 120px; display: flex;
+              align-items: center; justify-content: center; overflow: hidden; }
+  .snapwrap img { max-width: 100%; max-height: 300px; display: block; }
+  .snapph { color: var(--muted); font-size: 13px; padding: 34px 12px; text-align: center; }
+  .snapmeta { margin-top: 8px; font-size: 12.5px; color: var(--muted);
+              line-height: 1.7; white-space: pre-wrap; }
+  .snapmeta b { color: var(--text); }
+  .snaplist { margin-top: 10px; font-size: 12px; }
+  .snaplist .row { display: flex; gap: 10px; padding: 4px 0; color: var(--muted);
+                   border-top: 1px dashed var(--line); }
+  .snaplist .row:first-child { border-top: 0; }
+  .snaplist .sid { color: var(--text); font-variant-numeric: tabular-nums; }
+  .snaplist .st-ok { color: var(--ok); }
+  .snaplist .st-bad { color: var(--bad); }
+  .snaplist .st-warn { color: var(--warn); }
+  .tag.ok { background: var(--ok-bg); color: var(--ok-fg); }
+  .tag.warn { background: var(--warn-bg); color: var(--warn-fg); }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+
   /* 摄像头：改版前画面按原始比例铺满，一张图就占掉整页的 20%。
      限高之后仍然能看清画面，但把空间还给了下面的数据和曲线。 */
   #camStream {
@@ -722,6 +744,30 @@
 
   
 
+  
+    <!-- 第7周：按需环境快照。
+         只在人点了按钮（或教学求助事件）时才向板子取一帧，**没有定时抓拍** ——
+         任务卡原文「只在请求或教学事件触发后取图」。
+         失败时这块区域不会把上一张图当成"这次的画面"：会明确标出"不是本次"。 -->
+    <div class="chartbox" id="snapBox">
+      <div class="charthead">
+        <h2>按需环境快照</h2>
+        <div class="seg">
+          <span id="snapState" class="tag">空闲</span>
+          <button id="snapBtn" type="button">拍一张</button>
+        </div>
+      </div>
+      <p class="snaphint">
+        点一下才拍。拍到的是<b>按下那一刻</b>的画面；拍失败时下面会直接说失败，
+        不会拿上一张图冒充这一次。
+      </p>
+      <div class="snapwrap">
+        <img id="snapImg" alt="快照画面" hidden>
+        <div id="snapPlaceholder" class="snapph">还没有拍过。</div>
+      </div>
+      <div id="snapMeta" class="snapmeta"></div>
+      <div id="snapList" class="snaplist"></div>
+    </div>
   </section>
 
   <section class="panel" id="panel-data">
@@ -889,6 +935,121 @@ let PAUSED = false;      /* 板子当前是否处于「暂停周期上报」，�
 const API_BASE = (location.protocol === 'http:' || location.protocol === 'https:')
   ? location.origin
   : 'http://127.0.0.1:8000';
+
+/* ---------- 第7周：按需环境快照 ----------
+ * 四种状态必须能被**文字**区分，不能只靠颜色：
+ *   采集中 / 采集成功 / 画面不可用（遮挡或纯色）/ 采集失败
+ * 失败时最危险的动作是"把上一张图留在原地" —— 用户会以为那就是刚拍的。
+ * 所以失败分支一定做两件事之一：
+ *   · 有上次成功 → 显示它，但明确写"上次成功（时间），不是本次"
+ *   · 没有上次   → 清空画面，写"本次没有拿到画面"
+ */
+const snapBtn = document.getElementById('snapBtn');
+const snapState = document.getElementById('snapState');
+const snapImg = document.getElementById('snapImg');
+const snapPh = document.getElementById('snapPlaceholder');
+const snapMeta = document.getElementById('snapMeta');
+const snapList = document.getElementById('snapList');
+let snapBusy = false;
+
+function setSnapState(text, cls) {
+  if (!snapState) return;
+  snapState.textContent = text;
+  snapState.className = 'tag' + (cls ? ' ' + cls : '');
+}
+
+function showSnapImage(rec) {
+  if (!rec || !rec.id) {
+    snapImg.hidden = true;
+    snapImg.removeAttribute('src');
+    snapPh.hidden = false;
+    return;
+  }
+  snapImg.src = '/api/snapshot/' + rec.id + '.jpg?t=' + Date.now();
+  snapImg.hidden = false;
+  snapPh.hidden = true;
+}
+
+function renderSnapList(items) {
+  if (!snapList) return;
+  if (!items || !items.length) {
+    snapList.innerHTML = '<div class="row"><span>还没有任何快照记录。</span></div>';
+    return;
+  }
+  snapList.innerHTML = items.slice(0, 5).map(function (r) {
+    var cls = r.status === 'ok' ? 'st-ok'
+      : ((r.status === 'too_dark' || r.status === 'flat_frame') ? 'st-warn' : 'st-bad');
+    var label = r.status === 'ok' ? (r.source === 'replay' ? '回放' : '成功') : r.status;
+    return '<div class="row">'
+      + '<span class="sid">' + (r.captured_at || '') + '</span>'
+      + '<span class="' + cls + '">' + label + '</span>'
+      + '<span>' + (r.width ? r.width + 'x' + r.height : '') + '</span>'
+      + '<span>' + (r.source === 'replay' ? '（历史图像）' : '') + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+async function loadSnapList() {
+  try {
+    const r = await fetch('/api/snapshot/list?limit=8');
+    const d = await r.json();
+    renderSnapList(d.snapshots || []);
+  } catch (e) { /* 列表失败不影响拍图 */ }
+}
+
+async function takeSnapshot() {
+  if (snapBusy) return;
+  snapBusy = true;
+  snapBtn.disabled = true;
+  const t0 = performance.now();
+  setSnapState('采集中…', 'warn');
+  snapMeta.textContent = '正在向板子取一帧…';
+  try {
+    const r = await fetch('/api/snapshot', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trigger: 'user', request_id: 'web-' + Date.now().toString(36) })
+    });
+    const d = await r.json();
+    const httpMs = Math.round(performance.now() - t0);
+
+    if (d.status === 'ok' && d.is_this_attempt) {
+      setSnapState('采集成功', 'ok');
+      showSnapImage(d);
+      snapMeta.innerHTML = '<b>' + d.width + 'x' + d.height + '</b>'
+        + ' · 拍摄于 <b>' + d.captured_at + '</b>'
+        + ' · 取帧 ' + d.latency_ms + ' ms（含往返 ' + httpMs + ' ms）'
+        + (d.bytes ? ' · ' + Math.round(d.bytes / 1024) + ' KB' : '');
+    } else if (d.status === 'too_dark' || d.status === 'flat_frame') {
+      setSnapState('画面不可用', 'warn');
+      showSnapImage(d);
+      snapMeta.innerHTML = '<b>这次拍到的画面不可用</b>：' + (d.reason || '')
+        + '<br>这张图仍然存下来了（' + d.id + '），可以对照看看是遮挡还是没开灯。';
+    } else {
+      setSnapState('采集失败', 'bad');
+      const why = (d.reply || d.reason || '未知原因').split('\n')[0];
+      if (d.last_ok && d.last_ok.id) {
+        showSnapImage(d.last_ok);
+        snapMeta.innerHTML = '<b>这次没有拍到。</b>' + why
+          + '<br>下面是<b>上次成功</b>的一张（' + d.last_ok.captured_at
+          + '，' + d.last_ok.age_seconds + ' 秒前）—— <b>不是本次采集的结果</b>。';
+      } else {
+        showSnapImage(null);
+        snapPh.textContent = '本次没有拿到画面';
+        snapMeta.innerHTML = '<b>这次没有拍到。</b>' + why + '<br>而且此前还没有成功过，所以没有可对照的画面。';
+      }
+    }
+    loadSnapList();
+  } catch (e) {
+    setSnapState('请求失败', 'bad');
+    snapMeta.textContent = '连服务器都没通：' + String(e);
+  } finally {
+    snapBusy = false;
+    snapBtn.disabled = false;
+  }
+}
+
+if (snapBtn) snapBtn.addEventListener('click', takeSnapshot);
+if (snapList) loadSnapList();
 
 /* ---------- 摄像头取流方式 ----------
  * 'server'（默认）：走服务器中转，网页不必知道板子 IP，板子只维持 1 路连接。

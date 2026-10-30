@@ -54,6 +54,7 @@ from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from camera_relay import CameraRelay, CLIENT_BOUNDARY, FRAME_BOUNDARY
+from snapshots import SnapshotStore, SnapshotService
 from commands import CommandStore
 from help import HelpStore
 from nl_agent import LLMClient, NLAgent
@@ -250,6 +251,11 @@ def latest_device_ip() -> str:
 
 RELAY = CameraRelay(latest_ip_fn=latest_device_ip)
 
+# 第7周：按需环境快照。板子 IP 同样从最新上报推导 —— 换 IP 不用改代码。
+# 注意 SNAP 只做"取一张图并落记录"，不做定时抓拍：任务卡要求"只在请求或教学事件触发后取图"。
+SNAPSHOTS = SnapshotStore(DATA_DIR)
+SNAP = SnapshotService(SNAPSHOTS, latest_device_ip)
+
 
 # ---- 第4周：自然语言助手（产品运行时模型 + 受限工具）----
 # LLM 的地址/密钥只从**服务端环境变量**读（NL_LLM_BASE_URL / NL_LLM_API_KEY /
@@ -316,6 +322,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_camera()
         if path == "/api/camera/status":
             return self._send_json(200, RELAY.get_status())
+        # 第7周：按需环境快照
+        if path == "/api/snapshot/list":
+            return self.api_snapshot_list(qs)
+        if path == "/api/snapshot/latest":
+            return self.api_snapshot_latest(qs)
+        if path.startswith("/api/snapshot/") and path.endswith(".jpg"):
+            return self.api_snapshot_image(path)
         if path == "/api/commands":
             return self.api_commands(qs)
         if path == "/api/buttons":
@@ -669,6 +682,148 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(b"\r\n")
         self.wfile.flush()
 
+    # ---------- 第7周：按需环境快照 ----------
+    def _send_bytes(self, code: int, data: bytes, ctype: str):
+        """发原始字节。图片不能走 _send_json，否则会被塞进 JSON 字符串。"""
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        try:
+            self.wfile.write(data)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _snapshot_reply(rec: dict) -> str:
+        """把记录翻成一句人话。**成功与失败的说法必须不同**，
+        否则"上次成功"很容易被读成"这次成功"。"""
+        st = rec.get("status")
+        if st == "ok":
+            return ("拍到一张 %sx%s 的画面，拍摄时刻 %s，耗时 %s ms。"
+                    % (rec.get("width"), rec.get("height"),
+                       rec.get("captured_at"), rec.get("latency_ms")))
+        table = {
+            "denied": "没有明确请求，**没有取图**：%s",
+            "board_unknown": "找不到板子地址，**没有取图**：%s",
+            "unreachable": "连不上板子，**这次没拍到**：%s",
+            "timeout": "板子没在规定时间内回画面，**这次没拍到**：%s",
+            "board_error": "板子报了错，**这次没拍到**：%s",
+            "too_dark": "这次取到的画面**不可用**（可能镜头被遮挡或全黑）：%s",
+            "flat_frame": "这次取到的画面**不可用**（几乎是纯色）：%s",
+            "too_small": "这次取到的画面**不可用**：%s",
+            "bad_jpeg": "这次取到的**不是有效图像**：%s",
+            "replay_missing": "回放失败：%s",
+        }
+        if st in table:
+            return table[st] % rec.get("reason", "")
+        return "采集未成功（%s）：%s" % (st, rec.get("reason", ""))
+
+    def api_snapshot_post(self):
+        body, code = self._read_json_body()
+        if code:
+            return code
+        # force_ip 只在 --fault-injection 下生效：用来**确定地**造一次采集失败，
+        # 以验证「上次成功图像不得被标为本次采集成功」。正常情况下这个字段无效。
+        force_ip = ""
+        if FAULT_ENABLED:
+            force_ip = str(body.get("force_ip") or "").strip()[:64]
+            if force_ip:
+                print(f"[snapshot] 故障注入 force_ip={force_ip}")
+        rec = SNAP.capture(
+            request_id=str(body.get("request_id") or "").strip()[:64],
+            trigger=str(body.get("trigger") or "").strip()[:32],
+            note=str(body.get("note") or "").strip()[:120],
+            replay_of=str(body.get("replay_of") or "").strip()[:64],
+            force_ip=force_ip,
+        )
+        out = dict(rec)
+        # 关键字段：**这一次真实采集**到底成不成。
+        # 回放（source=replay）即便 status=ok 也**不是本次采集**，必须为 False ——
+        # 这正是任务卡「上次成功图像不得被标为本次采集成功」要挡的那类误读。
+        out["is_this_attempt"] = (rec.get("status") == "ok"
+                                  and rec.get("source") == "device")
+        out["ok"] = bool(rec.get("usable"))
+        out["reply"] = self._snapshot_reply(rec)
+        if rec.get("status") != "ok":
+            last = SNAPSHOTS.last_ok()
+            if last:
+                out["last_ok"] = {
+                    "id": last.get("id"),
+                    "captured_at": last.get("captured_at"),
+                    "age_seconds": round((time.time() * 1000 - (last.get("captured_ms") or 0)) / 1000),
+                    "is_this_attempt": False,
+                }
+                out["reply"] += ("\n\n上次成功的一张是 %s（%s），"
+                                 "**那不是本次采集的结果**。"
+                                 % (last.get("id"), last.get("captured_at")))
+        if rec.get("source") == "replay":
+            out["reply"] = ("这是**回放**：%s。它不是本次采集的画面，"
+                            "只用于在没有设备时练习流程。" % rec.get("reason"))
+        if rec.get("status") == "denied":
+            return self._send_json(403, out)
+        return self._send_json(200, out)
+
+    def api_snapshot_replay(self):
+        """把一张**历史真实图像**导入为回放记录（任务卡备用路径）。
+
+        为什么要限制目录：这个接口会读服务器上的文件。**只允许 debug_logs/**
+        下的历史抓帧，其它路径一律拒绝 —— 否则它就成了任意文件读取的口子。
+        """
+        body, code = self._read_json_body()
+        if code:
+            return code
+        rel = str(body.get("file") or "").strip()
+        if not rel:
+            return self._send_json(400, {"error": "file 必填（相对 week1/ 的路径）"})
+        allowed_dir = os.path.abspath(os.path.join(ROOT, "debug_logs"))
+        full = os.path.abspath(os.path.join(ROOT, rel))
+        if not full.startswith(allowed_dir + os.sep):
+            return self._send_json(403, {
+                "error": "只允许导入 debug_logs/ 下的历史抓帧",
+                "given": rel, "allowed_dir": allowed_dir})
+        rec = SNAP.import_replay(full,
+                                     request_id=str(body.get("request_id") or "")[:64],
+                                     note=str(body.get("note") or "历史图像回放")[:120])
+        out = dict(rec)
+        out["ok"] = bool(rec.get("usable"))
+        out["is_this_attempt"] = False      # 回放永远不是本次采集
+        out["reply"] = "这是**回放**：%s。它不是本次采集的画面。" % rec.get("reason", "")
+        return self._send_json(200 if rec.get("usable") else 400, out)
+
+    def api_snapshot_list(self, qs):
+        try:
+            limit = int((qs.get("limit") or ["20"])[0])
+        except (TypeError, ValueError):
+            limit = 20
+        items = SNAPSHOTS.all(limit)
+        last = SNAPSHOTS.last_ok()
+        return self._send_json(200, {
+            "count": len(items),
+            "ok_count": sum(1 for r in items if r.get("status") == "ok"),
+            "last_ok": ({"id": last.get("id"), "captured_at": last.get("captured_at")}
+                        if last else None),
+            "snapshots": items,
+        })
+
+    def api_snapshot_latest(self, qs):
+        return self.api_snapshot_list(qs)
+
+    def api_snapshot_image(self, path: str):
+        sid = path[len("/api/snapshot/"):-len(".jpg")]
+        rec = SNAPSHOTS.get(sid)
+        if not rec:
+            return self._send_json(404, {"error": "没有这条快照记录", "id": sid})
+        p = SNAPSHOTS.path_of(rec)
+        if not p or not os.path.exists(p):
+            return self._send_json(404, {"error": "记录在，但图片文件不在了", "id": sid,
+                                         "status": rec.get("status")})
+        with open(p, "rb") as f:
+            data = f.read()
+        return self._send_bytes(200, data, "image/jpeg")
+
     def api_camera(self):
         """把板子的 MJPEG 流转发给浏览器。
         注意：服务器与板子之间始终只有 1 路连接，浏览器再多也不会压垮板子。"""
@@ -740,6 +895,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_asr()
         if path == "/api/audio":
             return self.api_audio()
+        if path == "/api/snapshot":
+            return self.api_snapshot_post()
+        if path == "/api/snapshot/replay":
+            return self.api_snapshot_replay()
         if path != "/api/data":
             return self._send_json(404, {"error": "not found"})
 
