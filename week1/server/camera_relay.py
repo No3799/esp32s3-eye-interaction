@@ -29,6 +29,12 @@ import threading
 import time
 import urllib.request
 
+# 板子在局域网里，**必须绕开系统代理**。
+# 2026-10-30 实测事故：中继进程带着 https_proxy 启动，urlopen 把 http://10.1.41.160:81/stream
+# 交给了代理，代理拒绝转发私网地址，回 **403 Forbidden** —— 页面上就是"摄像头显示不了画面"。
+# 而同一时刻直接 curl 该地址是 200。所以不能依赖启动环境，代码里显式绕过。
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
 # 中继给浏览器的分隔串（与板端那个不一样，避免混淆）
 FRAME_BOUNDARY = "week1relayframe"
 CLIENT_BOUNDARY = ("--" + FRAME_BOUNDARY).encode("ascii")
@@ -176,8 +182,9 @@ class CameraRelay:
         self.state = "connecting"
         try:
             req = urllib.request.Request(url)
-            # 超时不要设太长：宁可早点发现断流去重连，也不要干等
-            resp = urllib.request.urlopen(req, timeout=8)
+            # 超时不要设太长：宁可早点发现断流去重连，也不要干等。
+            # 用 _OPENER（不走代理）而不是 urlopen，见文件头注释。
+            resp = _OPENER.open(req, timeout=8)
         except Exception as e:
             self.state = "error"
             self.last_error = f"连不上板子 {url}: {e}"
