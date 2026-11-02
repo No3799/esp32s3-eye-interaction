@@ -965,7 +965,7 @@ function showSnapImage(rec) {
     snapPh.hidden = false;
     return;
   }
-  snapImg.src = '/api/snapshot/' + rec.id + '.jpg?t=' + Date.now();
+  snapImg.src = API_BASE + '/api/snapshot/' + rec.id + '.jpg?t=' + Date.now();
   snapImg.hidden = false;
   snapPh.hidden = true;
 }
@@ -991,7 +991,7 @@ function renderSnapList(items) {
 
 async function loadSnapList() {
   try {
-    const r = await fetch('/api/snapshot/list?limit=8');
+    const r = await fetch(API_BASE + '/api/snapshot/list?limit=8');
     const d = await r.json();
     renderSnapList(d.snapshots || []);
   } catch (e) { /* 列表失败不影响拍图 */ }
@@ -1005,7 +1005,7 @@ async function takeSnapshot() {
   setSnapState('采集中…', 'warn');
   snapMeta.textContent = '正在向板子取一帧…';
   try {
-    const r = await fetch('/api/snapshot', {
+    const r = await fetch(API_BASE + '/api/snapshot', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ trigger: 'user', request_id: 'web-' + Date.now().toString(36) })
     });
@@ -2238,7 +2238,7 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
          * 在语音这条路上不止一段，所以分段记，别只给一个总数。 */
         const asrT0 = performance.now();
         try {
-          const resp = await fetch('/api/asr', {
+          const resp = await fetch(API_BASE + '/api/asr', {
             method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: blob
           });
           const d = await resp.json();
@@ -2334,7 +2334,7 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
     let lastAudioId = null;
     async function pollDeviceAudio() {
       try {
-        const r = await fetch('/api/audio/latest?limit=3', { cache: 'no-store' });
+        const r = await fetch(API_BASE + '/api/audio/latest?limit=3', { cache: 'no-store' });
         const d = await r.json();
         const ev = (d.events || [])[0];
         if (!ev || ev.id === lastAudioId) return;
@@ -2463,7 +2463,7 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
     }));
 
     try {
-      const r = await fetch('/api/ask', {
+      const r = await fetch(API_BASE + '/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text, req_id: reqId, session_id: sid }),
@@ -2646,7 +2646,7 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
   });
 
   /* 显示当前用的是哪个运行时模型（只有主机名和模型名，没有密钥） */
-  fetch('/api/agent/info')
+  fetch(API_BASE + '/api/agent/info')
     .then(r => r.json())
     .then(d => {
       if (d.llm && d.llm.model) {
