@@ -497,6 +497,44 @@
   .tag.warn { background: var(--warn-bg); color: var(--warn-fg); }
   .tag.bad { background: var(--bad-bg); color: var(--bad); }
 
+  /* 第8周：视觉推理面板 */
+  .visbox { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .vishead-row { display: flex; align-items: center; justify-content: space-between;
+                 gap: 12px; flex-wrap: wrap; }
+  .vishead-row h3 { font-size: 14px; margin: 0; color: var(--text); font-weight: 600; }
+  .vishint { font-size: 12.5px; color: var(--muted); margin: 6px 0 10px; line-height: 1.7; }
+  .viswhere { font-size: 11.5px; color: var(--muted); margin: -2px 0 10px;
+              padding: 6px 10px; background: var(--surface-3); border-radius: var(--r-sm);
+              line-height: 1.7; }
+  .visresult { background: var(--surface-2); border: 1px solid var(--border);
+               border-radius: var(--r-md); padding: 12px 14px; }
+  .vishead { font-size: 14px; color: var(--text); font-weight: 600; line-height: 1.6; }
+  .visdetail { margin-top: 4px; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .visdetail:empty { display: none; }
+  .visconf { margin-top: 6px; font-size: 12px; color: var(--muted);
+             font-variant-numeric: tabular-nums; }
+  .visadvice { margin-top: 8px; font-size: 13px; color: var(--warn-fg); }
+  .visadvice:empty { display: none; }
+  .visagree { margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .visagree:empty { display: none; }
+  .visfb, .visfix { margin-top: 10px; display: flex; gap: 8px; align-items: center;
+                    flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+  .visfb button, .visfix button { font-size: 12.5px; padding: 3px 10px; }
+  .vislist { margin-top: 10px; font-size: 12px; }
+  .vislist .row { display: flex; gap: 10px; padding: 4px 0; color: var(--muted);
+                  border-top: 1px dashed var(--line); }
+  .vislist .row:first-child { border-top: 0; }
+  .vislist .vid { color: var(--text); font-variant-numeric: tabular-nums; }
+  .vislist .fixed { color: var(--warn-fg); }
+
+  /* 第9周：主动询问条 */
+  .pabar { margin-top: 12px; padding: 12px 14px; border-radius: var(--r-md);
+           background: var(--warn-bg); border: 1px solid var(--warn); }
+  .patext { font-size: 13px; color: var(--text); line-height: 1.7; }
+  .pabtns { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .pabtns button { font-size: 12.5px; padding: 4px 12px; }
+  .pamute { margin-top: 8px; font-size: 12px; color: var(--muted); }
+
   /* 摄像头：改版前画面按原始比例铺满，一张图就占掉整页的 20%。
      限高之后仍然能看清画面，但把空间还给了下面的数据和曲线。 */
   #camStream {
@@ -767,6 +805,59 @@
       </div>
       <div id="snapMeta" class="snapmeta"></div>
       <div id="snapList" class="snaplist"></div>
+
+      <!-- 第8周：视觉推理。这里只做"看图说人话"，不重新拍照 ——
+           拍照是上面那块的事。分数一律写"模型自报（未校准）"，
+           页面任何地方都不出现"准确率/正确率"。 -->
+      <div class="visbox" id="visBox">
+        <div class="vishead-row">
+          <h3>模型怎么看这张图</h3>
+          <div class="seg">
+            <span id="visState" class="tag">未运行</span>
+            <button id="visBtn" type="button">让模型看看</button>
+          </div>
+        </div>
+        <p class="vishint">
+          只判断<b>画面能不能用</b>（能看清 / 被挡住 / 看不清是什么），
+          顺手说一句看到的大类。<b>不判断位置、不判断安全</b>。
+        </p>
+        <!-- 第9周：把"东西到底跑在哪"写在界面上。
+             演示时嘴上说一遍很容易，写在页面上才经得起复查。 -->
+        <div class="viswhere" id="visWhere"></div>
+        <div id="visResult" class="visresult" hidden>
+          <div class="vishead" id="visHead"></div>
+          <div class="visdetail" id="visDetail"></div>
+          <div class="visconf" id="visConf"></div>
+          <div class="visadvice" id="visAdvice"></div>
+          <div class="visagree" id="visAgree"></div>
+        </div>
+        <div class="visfb" id="visFb" hidden>
+          <span>这个判断准吗：</span>
+          <button type="button" data-verdict="correct">判对了</button>
+          <button type="button" data-verdict="wrong">判错了</button>
+          <button type="button" data-verdict="skipped">先不管</button>
+        </div>
+        <div class="visfix" id="visFix" hidden>
+          <span>实际是：</span>
+          <button type="button" data-label="usable">能看清</button>
+          <button type="button" data-label="blocked">被挡住了</button>
+          <button type="button" data-label="unclear">看不清是什么</button>
+        </div>
+        <div id="visList" class="vislist"></div>
+
+        <!-- 第9周：视觉事件触发的主动询问。
+             什么时候该问由服务端判定（proactive.py），前端不自作主张 ——
+             前端自己判断"要不要打扰人"，迟早会出现两处不一致的口径。 -->
+        <div class="pabar" id="paBar" hidden>
+          <div class="patext" id="paText"></div>
+          <div class="pabtns">
+            <button type="button" data-pa="retake">重拍一张</button>
+            <button type="button" data-pa="ignore">这次算了</button>
+            <button type="button" data-pa="mute">别再问（10 分钟内）</button>
+          </div>
+        </div>
+        <div class="pamute" id="paMute" hidden></div>
+      </div>
     </div>
   </section>
 
@@ -958,13 +1049,17 @@ function setSnapState(text, cls) {
   snapState.className = 'tag' + (cls ? ' ' + cls : '');
 }
 
+let CURRENT_SNAP = null;   /* 当前展示的是哪一张 —— 视觉推理要指着同一张，不能各说各的 */
+
 function showSnapImage(rec) {
   if (!rec || !rec.id) {
+    CURRENT_SNAP = null;
     snapImg.hidden = true;
     snapImg.removeAttribute('src');
     snapPh.hidden = false;
     return;
   }
+  CURRENT_SNAP = rec.id;
   snapImg.src = API_BASE + '/api/snapshot/' + rec.id + '.jpg?t=' + Date.now();
   snapImg.hidden = false;
   snapPh.hidden = true;
@@ -1050,6 +1145,241 @@ async function takeSnapshot() {
 
 if (snapBtn) snapBtn.addEventListener('click', takeSnapshot);
 if (snapList) loadSnapList();
+
+/* ================= 第8周：视觉推理 → 可理解反馈 =================
+ *
+ * 三件事在这里被**分开**表达，不合成一句"识别成功"：
+ *   看到什么     —— 模型给的标签 + 看到的大类
+ *   有多确定     —— 一律写"模型自报 x.xx（未校准）"，页面不出现"准确率"
+ *   还不确定什么 —— 低分 / 模型自己说看不清 / 拒识，三种都算"不确定"，给重拍建议
+ *
+ * 为什么分数不能当正确率：这个模型没有在"我们这个场景"上做过校准，
+ * 它给的 0.9 只是它自己觉得有把握，不等于 90% 是对的。
+ * 要说正确率，得有留出集上的实测 —— 那不在这一周。 */
+const visBtn = document.getElementById('visBtn');
+const visState = document.getElementById('visState');
+const visResult = document.getElementById('visResult');
+const visHead = document.getElementById('visHead');
+const visDetail = document.getElementById('visDetail');
+const visConf = document.getElementById('visConf');
+const visAdvice = document.getElementById('visAdvice');
+const visAgree = document.getElementById('visAgree');
+const visFb = document.getElementById('visFb');
+const visFix = document.getElementById('visFix');
+const visList = document.getElementById('visList');
+
+let VIS_CURRENT = null;    /* 当前这条推理记录（含 id） */
+let visBusy = false;
+
+function setVisState(text, kind) {
+  if (!visState) return;
+  visState.textContent = text;
+  visState.className = 'tag' + (kind ? ' ' + kind : '');
+}
+
+function renderVision(d) {
+  VIS_CURRENT = { id: d.vision_id, snapshot_id: d.snapshot_id, result: d.result };
+  const h = d.human || {};
+  visResult.hidden = false;
+  visHead.textContent = h.head || '（没有结论）';
+  visDetail.textContent = h.detail || '';
+  visConf.textContent = '把握：' + (h.confidence_text || '—');
+  visAdvice.textContent = h.advice || '';
+
+  /* 规则判定（快照层：亮度/方差）和模型判定可能不一致 ——
+     不一致时不要挑一个当真理，两条都摆出来给人看。 */
+  if (d.agree_with_rule === true) {
+    visAgree.textContent = '和快照层的规则判定一致（' + (d.snapshot_status || '') + '）';
+  } else if (d.agree_with_rule === false) {
+    visAgree.textContent = '注意：和快照层的规则判定不一致 —— 规则说「' +
+      (d.snapshot_status || '?') + '」，模型说「' + (d.result.label || '?') +
+      '」。两个都留着，谁对由人来定。';
+  } else {
+    visAgree.textContent = '';
+  }
+
+  const rejected = d.result && d.result.rejected;
+  visFb.hidden = false;
+  visFix.hidden = true;
+  setVisState(rejected ? '没判出来' : '已判断', rejected ? 'warn' : 'ok');
+  renderProactive(d.proactive, d);
+}
+
+/* ---- 第9周：主动询问条 ----
+ * 问不问由服务端决定（它知道你有没有说过"别再问"），这里只负责：
+ * 把理由摆出来、给你三个出口、把选择记回去。 */
+const paBar = document.getElementById('paBar');
+const paText = document.getElementById('paText');
+const paMute = document.getElementById('paMute');
+let PA_CURRENT = null;
+
+function renderProactive(p, d) {
+  PA_CURRENT = d ? { snapshot_id: d.snapshot_id, vision_id: d.vision_id } : null;
+  if (!p || !p.ask) {
+    paBar.hidden = true;
+    return;
+  }
+  paBar.hidden = false;
+  paText.textContent = p.reason + ' —— 要重拍吗？';
+}
+
+async function sendProactive(action) {
+  if (!PA_CURRENT) return;
+  try {
+    const r = await fetch(API_BASE + '/api/proactive/respond', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: action, snapshot_id: PA_CURRENT.snapshot_id,
+                             vision_id: PA_CURRENT.vision_id }),
+    });
+    const d = await r.json();
+    if (!r.ok) { paText.textContent = '没记上：' + (d.error || r.status); return; }
+    paBar.hidden = true;
+    if (action === 'mute') {
+      paMute.hidden = false;
+      paMute.textContent = d.note;
+    } else if (action === 'retake') {
+      paMute.hidden = true;
+      takeSnapshot();          // 直接触发第 7 周的取图，不用再点一次
+    } else {
+      paMute.hidden = true;
+    }
+  } catch (e) {
+    paText.textContent = '请求失败：' + e.message;
+  }
+}
+
+if (paBar) {
+  paBar.querySelectorAll('button[data-pa]').forEach(b => {
+    b.addEventListener('click', () => sendProactive(b.dataset.pa));
+  });
+}
+fetch(API_BASE + '/api/proactive/state').then(r => r.json()).then(s => {
+  if (s && s.muted && paMute) {
+    paMute.hidden = false;
+    paMute.textContent = '主动询问已静音，' + s.mute_remain_s + ' 秒后恢复。';
+  }
+}).catch(() => {});
+
+async function runVision() {
+  if (visBusy) return;
+  visBusy = true;
+  visBtn.disabled = true;
+  setVisState('思考中…', 'warn');
+  visHead.textContent = '模型正在看这张图…';
+  visResult.hidden = false;
+  visDetail.textContent = '';
+  visConf.textContent = '';
+  visAdvice.textContent = '';
+  visAgree.textContent = '';
+  visFb.hidden = true;
+  visFix.hidden = true;
+  const t0 = performance.now();
+  try {
+    const body = CURRENT_SNAP ? { snapshot_id: CURRENT_SNAP } : {};
+    const r = await fetch(API_BASE + '/api/vision', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      setVisState('没跑成', 'bad');
+      visHead.textContent = '没跑成：' + (d.error || ('HTTP ' + r.status));
+      return;
+    }
+    renderVision(d);
+    const ms = Math.round(performance.now() - t0);
+    visConf.textContent += ' · 本机往返 ' + ms + ' ms';
+    loadVisList();
+  } catch (e) {
+    setVisState('连不上', 'bad');
+    visHead.textContent = '请求失败：' + e.message;
+  } finally {
+    visBusy = false;
+    visBtn.disabled = false;
+  }
+}
+
+async function sendVisionFeedback(verdict, corrected) {
+  if (!VIS_CURRENT || !VIS_CURRENT.id) return;
+  try {
+    const r = await fetch(API_BASE + '/api/vision/' + encodeURIComponent(VIS_CURRENT.id) + '/feedback', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verdict: verdict, corrected_label: corrected || null }),
+    });
+    const d = await r.json();
+    if (!r.ok) { visAdvice.textContent = '反馈没存上：' + (d.error || r.status); return; }
+    visFb.hidden = true;
+    visFix.hidden = true;
+    setVisState(verdict === 'wrong' ? '已纠正' : (verdict === 'correct' ? '已确认' : '已跳过'),
+                verdict === 'wrong' ? 'warn' : 'ok');
+    loadVisList();
+  } catch (e) {
+    visAdvice.textContent = '反馈请求失败：' + e.message;
+  }
+}
+
+async function loadVisList() {
+  if (!visList) return;
+  try {
+    const r = await fetch(API_BASE + '/api/vision/list?limit=6', { cache: 'no-store' });
+    const d = await r.json();
+    const items = d.items || [];
+    if (!items.length) { visList.innerHTML = ''; return; }
+    const labelOf = { usable: '能看清', blocked: '被挡住', unclear: '看不清', unknown: '没判出' };
+    visList.innerHTML = items.map(it => {
+      const res = it.result || {};
+      const fb = it.feedback;
+      const sc = res.score == null ? '—' : res.score.toFixed(2);
+      let tail = '';
+      if (fb && fb.verdict === 'wrong') tail = ' <span class="fixed">已纠正 → ' + (labelOf[fb.corrected_label] || fb.corrected_label) + '</span>';
+      else if (fb && fb.verdict === 'correct') tail = ' <span>已确认</span>';
+      else if (fb && fb.verdict === 'skipped') tail = ' <span>跳过</span>';
+      return '<div class="row"><span class="vid">' + it.id + '</span>' +
+             '<span>' + (it.snapshot_id || '') + '</span>' +
+             '<span>' + (labelOf[res.label] || res.label || '?') + ' · 自报 ' + sc + '</span>' +
+             tail + '</div>';
+    }).join('');
+  } catch (e) { /* 列表失败不影响主流程 */ }
+}
+
+if (visBtn) visBtn.addEventListener('click', runVision);
+if (visFb) {
+  visFb.querySelectorAll('button[data-verdict]').forEach(b => {
+    b.addEventListener('click', () => {
+      const v = b.dataset.verdict;
+      if (v === 'wrong') { visFix.hidden = false; return; }   // 判错了要问"实际是什么"
+      sendVisionFeedback(v, null);
+    });
+  });
+}
+if (visFix) {
+  visFix.querySelectorAll('button[data-label]').forEach(b => {
+    b.addEventListener('click', () => sendVisionFeedback('wrong', b.dataset.label));
+  });
+}
+loadVisList();
+
+/* 第9周：任务卡要求"演示中说明模型、设备及服务实际运行位置"。
+   写在页面上比嘴上说一遍可靠 —— 复查的人一眼能看到东西跑在哪。 */
+async function fillVisWhere() {
+  const el = document.getElementById('visWhere');
+  if (!el) return;
+  const parts = ['服务：本机 ' + location.host + '（不是云端）'];
+  try {
+    const info = await (await fetch(API_BASE + '/api/vision/info')).json();
+    const m = info.model || {};
+    parts.push('模型：本机 Ollama · ' + m.name +
+               '（' + (m.parameter_size || '?') + ' / ' + (m.quantization || '?') +
+               (m.digest ? ' / ' + m.digest : '') + '）');
+  } catch (e) { /* 拿不到就只显示服务位置 */ }
+  try {
+    const d = await (await fetch(API_BASE + '/api/latest')).json();
+    const ip = (d.record || {}).src_ip;
+    if (ip) parts.push('设备：ESP32-S3-EYE ' + ip + '（WiFi 上报，非 USB 桥接）');
+  } catch (e) { /* 同上 */ }
+  el.textContent = parts.join('　·　');
+}
+fillVisWhere();
 
 /* ---------- 摄像头取流方式 ----------
  * 'server'（默认）：走服务器中转，网页不必知道板子 IP，板子只维持 1 路连接。

@@ -54,7 +54,10 @@ from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from camera_relay import CameraRelay, CLIENT_BOUNDARY, FRAME_BOUNDARY
+from proactive import ProactiveGuard
 from snapshots import SnapshotStore, SnapshotService
+from vision_agent import UNCERTAIN_BELOW, VisionAgent
+from vision_store import VisionStore
 from commands import CommandStore
 from help import HelpStore
 from nl_agent import LLMClient, NLAgent
@@ -256,6 +259,16 @@ RELAY = CameraRelay(latest_ip_fn=latest_device_ip)
 SNAPSHOTS = SnapshotStore(DATA_DIR)
 SNAP = SnapshotService(SNAPSHOTS, latest_device_ip)
 
+# 第8周：视觉推理。模型跑在本地 Ollama（qwen2.5vl），这里只做转发与落库。
+# 关键：VISION 返回的 score 是**模型自报的把握**，不是校准过的正确率 ——
+# 接口里带 score_kind="self_reported"，页面也必须照这个口径显示。
+VISION = VisionAgent()
+VISION_STORE = VisionStore(DATA_DIR)
+
+# 第9周：视觉事件触发的主动询问。这里只管"该不该问、问过之后记住你的选择"，
+# 不负责生成文案（文案在前端）。冷却状态落盘，刷新页面也不会忘。
+PROACTIVE = ProactiveGuard(DATA_DIR)
+
 
 # ---- 第4周：自然语言助手（产品运行时模型 + 受限工具）----
 # LLM 的地址/密钥只从**服务端环境变量**读（NL_LLM_BASE_URL / NL_LLM_API_KEY /
@@ -329,6 +342,18 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_snapshot_latest(qs)
         if path.startswith("/api/snapshot/") and path.endswith(".jpg"):
             return self.api_snapshot_image(path)
+        # 第8周：视觉推理结果
+        if path == "/api/vision/list":
+            return self.api_vision_list(qs)
+        if path == "/api/vision/info":
+            return self._send_json(200, {
+                "model": VISION.model_info(refresh=True),
+                "score_kind": "self_reported",
+                "uncertain_below": UNCERTAIN_BELOW,
+            })
+        # 第9周：主动询问的冷却状态
+        if path == "/api/proactive/state":
+            return self._send_json(200, PROACTIVE.state())
         if path == "/api/commands":
             return self.api_commands(qs)
         if path == "/api/buttons":
@@ -824,6 +849,158 @@ class Handler(BaseHTTPRequestHandler):
             data = f.read()
         return self._send_bytes(200, data, "image/jpeg")
 
+    # ---------- 第8周：视觉推理 ----------
+    def _latest_usable_snapshot(self):
+        """没指定 snapshot_id 时用哪一张：优先最新一条（不管成败），
+        因为"最近这张拍坏了"恰恰是需要推理来判断的场景。"""
+        recs = SNAPSHOTS.all(limit=1)
+        return recs[0] if recs else None
+
+    def api_vision_infer(self):
+        """POST /api/vision  {snapshot_id?: str}
+
+        对一张已存在的快照做视觉推理。**不重新拍照** —— 拍照是第 7 周的事，
+        这里只负责"这张图里是什么、模型有多确定"。
+        """
+        body, code = self._read_json_body()
+        if code:
+            return code
+        sid = str(body.get("snapshot_id") or "").strip()
+        if sid:
+            rec = SNAPSHOTS.get(sid)
+            if not rec:
+                return self._send_json(404, {"error": "没有这条快照记录", "snapshot_id": sid})
+        else:
+            rec = self._latest_usable_snapshot()
+            if not rec:
+                return self._send_json(409, {"error": "库里还没有任何快照，先拍一张"})
+
+        p = SNAPSHOTS.path_of(rec)
+        if not p or not os.path.exists(p):
+            return self._send_json(409, {
+                "error": "快照记录在，但图片文件不在了",
+                "snapshot_id": rec.get("id"), "status": rec.get("status")})
+        with open(p, "rb") as f:
+            jpeg = f.read()
+
+        # 模型没到位就直说，不要落一条"拒识"记录 ——
+        # 系统故障和"模型看了但判不出来"是两回事，混在一个统计里会污染误判率。
+        if not VISION.available():
+            return self._send_json(503, {
+                "error": "视觉模型不可用：确认本机 Ollama 已拉取 "
+                         + VISION.model,
+                "model": VISION.model_info(refresh=True),
+                "hint": "模型没到位时不出结论 —— 给一个猜的标签比不给更糟",
+            })
+
+        result = VISION.infer(jpeg, snapshot_id=rec.get("id") or "")
+        stored = VISION_STORE.add_result(rec.get("id") or "", result)
+        human = VisionAgent.humanize(result)
+
+        # 拍坏了这件事，快照层和第 8 周的推理层要能对上：
+        # 快照的 status 是规则判定（亮度/方差），推理的 label 是模型判定，两者可能不一致，
+        # 不一致时**两条都留着**，不要用其中一条去覆盖另一条。
+        snap_status = rec.get("status")
+        agree = None
+        if snap_status == "ok" and result.get("label") == "usable":
+            agree = True
+        elif snap_status in ("too_dark", "flat_frame") and result.get("label") == "blocked":
+            agree = True
+        elif result.get("rejected"):
+            agree = None
+        elif snap_status and result.get("label"):
+            agree = False
+
+        # 第9周：推理完顺手判断"要不要主动问一句"。判断逻辑在 proactive.py，
+        # 这里只把结论带给前端 —— 前端不该自己猜什么时候该打扰人。
+        ask, why = PROACTIVE.should_ask(result, rec.get("id") or "")
+
+        return self._send_json(200, {
+            "ok": True,
+            "vision_id": stored["id"],
+            "snapshot_id": rec.get("id"),
+            "snapshot_status": snap_status,
+            "result": result,
+            "human": human,
+            "agree_with_rule": agree,   # 规则判定 vs 模型判定 是否一致
+            "score_note": "score 是模型自报的把握，不是校准后的正确率",
+            "proactive": {"ask": ask, "reason": why},
+            "created_at": stored["created_at"],
+        })
+
+    def api_vision_feedback(self, vision_id: str):
+        """POST /api/vision/<id>/feedback  {verdict, corrected_label?, note?}
+
+        verdict = correct / wrong / skipped。
+        `wrong` 必须带 corrected_label —— 只说"判错了"不说"应该是什么"，
+        对下一次没有任何帮助，所以这里直接 400。
+        """
+        rec = VISION_STORE.get(vision_id)
+        if not rec:
+            return self._send_json(404, {"error": "没有这条推理记录", "id": vision_id})
+        body, code = self._read_json_body()
+        if code:
+            return code
+        verdict = str(body.get("verdict") or "").strip()
+        if verdict not in ("correct", "wrong", "skipped"):
+            return self._send_json(400, {
+                "error": "verdict 只能是 correct / wrong / skipped", "got": verdict})
+        corrected = body.get("corrected_label")
+        corrected = str(corrected).strip() if corrected else None
+        if verdict == "wrong" and corrected not in ("usable", "blocked", "unclear"):
+            return self._send_json(400, {
+                "error": "判错时必须说明正确的标签（usable / blocked / unclear）",
+                "got": corrected})
+        if verdict != "wrong":
+            corrected = None
+        fb = VISION_STORE.add_feedback(vision_id, verdict, corrected,
+                                       str(body.get("note") or ""))
+        return self._send_json(200, {"ok": True, "feedback": fb,
+                                     "vision": VISION_STORE.get(vision_id)})
+
+    def api_vision_list(self, qs):
+        """GET /api/vision/list?limit=N —— 结果 + 反馈 + 统计"""
+        try:
+            limit = max(1, min(200, int((qs.get("limit") or ["20"])[0])))
+        except (TypeError, ValueError):
+            limit = 20
+        return self._send_json(200, {
+            "items": VISION_STORE.all(limit=limit),
+            "stats": VISION_STORE.stats(),
+            "model": VISION.model_info(),
+            "score_kind": "self_reported",
+        })
+
+    # ---------- 第9周：主动询问 ----------
+    def api_proactive_respond(self):
+        """POST /api/proactive/respond  {action, snapshot_id?, vision_id?, reason?}
+
+        action = retake（重拍）/ ignore（这次算了）/ mute（别再问，进冷却）。
+        **重拍不在这里做** —— 这里只记住"用户选了重拍"，真正的取图还是第 7 周的
+        /api/snapshot。把两件事分开，是为了让"用户的选择"和"设备动作"各有各的记录。
+        """
+        body, code = self._read_json_body()
+        if code:
+            return code
+        action = str(body.get("action") or "").strip()
+        if action not in ("retake", "ignore", "mute"):
+            return self._send_json(400, {
+                "error": "action 只能是 retake / ignore / mute", "got": action})
+        rec = PROACTIVE.record(
+            action,
+            snapshot_id=str(body.get("snapshot_id") or ""),
+            vision_id=str(body.get("vision_id") or ""),
+            reason=str(body.get("reason") or ""),
+        )
+        return self._send_json(200, {
+            "ok": True, "record": rec, "state": PROACTIVE.state(),
+            "note": {
+                "retake": "已记为「要重拍」，请点上面的「拍一张」",
+                "ignore": "已记为「这次算了」，同一张不再问",
+                "mute": "已记为「别再问」，%d 分钟内不再主动询问" % PROACTIVE.cooldown_s,
+            }.get(action, ""),
+        })
+
     def api_camera(self):
         """把板子的 MJPEG 流转发给浏览器。
         注意：服务器与板子之间始终只有 1 路连接，浏览器再多也不会压垮板子。"""
@@ -899,6 +1076,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_snapshot_post()
         if path == "/api/snapshot/replay":
             return self.api_snapshot_replay()
+        # 第8周：视觉推理与人工纠正
+        if path == "/api/vision":
+            return self.api_vision_infer()
+        if path.startswith("/api/vision/") and path.endswith("/feedback"):
+            return self.api_vision_feedback(path[len("/api/vision/"):-len("/feedback")])
+        # 第9周：用户对主动询问的回应
+        if path == "/api/proactive/respond":
+            return self.api_proactive_respond()
         if path != "/api/data":
             return self._send_json(404, {"error": "not found"})
 
