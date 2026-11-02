@@ -121,8 +121,8 @@ static camera_config_t s_cam_cfg = {
     .ledc_channel   = LEDC_CHANNEL_0,
 
     .pixel_format   = PIXFORMAT_JPEG,   /* 关键：让传感器输出 JPEG，不要 GRB565 */
-    .frame_size     = FRAMESIZE_QVGA,   /* 320x240，帧率与清晰度最均衡 */
-    .jpeg_quality   = 12,               /* 数值越小画质越高、码流越大 */
+    .frame_size     = FRAMESIZE_VGA,    /* 640x480：QVGA 在电脑上放大后明显糊 */
+    .jpeg_quality   = 10,               /* 0~63，越小画质越高、码流越大（原 12，降一档补细节） */
     .fb_count       = 2,                /* 双缓冲，采集与发送并行 */
     .fb_location    = CAMERA_FB_IN_PSRAM,
     .grab_mode      = CAMERA_GRAB_LATEST,
@@ -419,9 +419,9 @@ esp_err_t camera_stream_start(void)
 
     sensor_t *s = esp_camera_sensor_get();
     if (s) {
-        /* OV2640 出厂朝向可能与握持方向不一致，需要时打开下面两行 */
-        /* s->set_vflip(s, 1); */
-        /* s->set_hmirror(s, 1); */
+        /* OV2640 模组在本板上是**倒装**的：实测画面上下颠倒、左右正常，
+         * 所以只开 vflip。不要顺手把 hmirror 也打开 —— 那会变成左右镜像。 */
+        s->set_vflip(s, 1);
         ESP_LOGI(TAG, "摄像头就绪: pid=0x%02x ver=0x%02x",
                  (unsigned)s->id.PID, (unsigned)s->id.VER);
     }
