@@ -93,10 +93,8 @@ def main() -> int:
     cam = src["camera"]
     check(cam["state"] in ("stale", "ok"), "摄像头状态可计算",
           "%s，age %.0fs" % (cam["state_text"], cam["age_seconds"] or -1))
-    # 这一条是本项目真实状态：网络在线、影像却是几天前的 —— 正好是任务卡要的对照
-    if cam["state"] == "stale" and src["net"]["state"] == "ok":
-        check(True, "「网络在线但影像未更新」在真实状态里成立",
-              "链路 %s / 影像 %s" % (src["net"]["state_text"], cam["state_text"]))
+    # 注：这里不再断言"影像一定过期" —— 拍一张新图它就不成立了。
+    # 「网络在线但影像未更新」的判定放到第 [6] 节用规则层构造，结果稳定。
 
     # ---------- 3. 补传：观测时间旧、接收时间新 ----------
     print("\n[3] 补传数据按原观测时间解释")
@@ -164,8 +162,33 @@ def main() -> int:
     cases = [c["case"] for c in ctx.get("conflicts", [])]
     print("    实际检出：", "、".join(cases) if cases else "（无）")
     check(any("no_fix" in c for c in cases), "检出「有旧位置，但本次 no_fix」")
-    check(any("影像" in c or "位置未更新" in c for c in cases),
-          "检出「网络在线但影像/位置未更新」")
+
+    # 「网络在线但影像未更新」不能只在"恰好影像过期"时才算通过 ——
+    # 拍一张新图之后这个条件就不成立了（本测试自己就会拍）。所以改成
+    # 直接在规则层构造一对「链路有效 + 影像过期」的来源，验证判定逻辑本身。
+    sys.path.insert(0, os.path.join(ROOT, "server"))
+    from context_rules import ContextBuilder
+
+    class _BoardStub:
+        def events(self, *a, **k):
+            return []
+
+    probe = ContextBuilder.__new__(ContextBuilder)
+    probe.board = _BoardStub()
+    fake_snap = {
+        "now_ms": int(time.time() * 1000),
+        "location": {"answerable": False, "reason": "test"},
+        "sources": [
+            {"id": "net", "state": "ok", "state_text": "成功", "age_seconds": 1.0,
+             "payload": {"rssi": -40}, "presence": "real", "note": ""},
+            {"id": "camera", "state": "stale", "state_text": "已过期",
+             "age_seconds": 7200.0, "payload": {}, "presence": "real", "note": ""},
+        ],
+    }
+    rule_cases = [c["case"] for c in probe._conflicts(fake_snap)]
+    check(any("影像" in c for c in rule_cases),
+          "规则层：链路在线 + 影像过期 → 检出对照案例",
+          "、".join(rule_cases) or "（无）")
 
     # ---------- 7. 汇总 ----------
     ok = sum(1 for r in _results if r[0])

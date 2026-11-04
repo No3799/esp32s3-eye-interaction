@@ -1420,7 +1420,89 @@ class Handler(BaseHTTPRequestHandler):
     def _help_public(self, ev: dict) -> dict:
         out = HELP.to_public(ev)
         out["safety"] = self.HELP_SAFETY
+        # 个人项目迁移（第 10 周）：这条求助**发生那一刻**设备数据新不新。
+        # 求助是"人按的键"，事件本身永远有效；但当时的数据可能已经过期 ——
+        # 拿过期数据去推断现场，就是另一回事了。两件事必须分开说。
+        out["data_freshness"] = self._help_freshness(ev)
+        # 个人项目迁移（第 8 周）：这条求助若配了画面，把模型判断和纠错入口一起给出。
+        out["vision"] = self._help_vision(ev)
         return out
+
+    def _help_freshness(self, ev: dict) -> dict:
+        """求助事件发生时刻的数据新鲜度（按 IMU 窗口 5 秒判）。"""
+        created = ev.get("created_ms") or 0
+        if not created:
+            return {"available": False, "state": "unknown",
+                    "note": "事件没有时间戳，判断不了当时数据新不新"}
+        with LOCK:
+            row = CONN.execute(
+                "SELECT * FROM readings WHERE server_ms <= ? ORDER BY id DESC LIMIT 1",
+                (created,)).fetchone()
+            later = None
+            if row is None:
+                later = CONN.execute(
+                    "SELECT * FROM readings WHERE server_ms > ? ORDER BY id ASC LIMIT 1",
+                    (created,)).fetchone()
+        if row is None:
+            if later is not None:
+                lag = round(((dict(later)["server_ms"] or 0) - created) / 1000.0, 1)
+                return {"available": False, "state": "absent",
+                        "note": "这条求助之前没有任何上报；%.1f 秒后才有第一条" % lag}
+            return {"available": False, "state": "absent",
+                    "note": "这条求助之前没有任何上报，也没有后续数据"}
+        rec = dict(row)
+        age = round((created - (rec.get("server_ms") or 0)) / 1000.0, 1)
+        window = 5.0
+        state = "ok" if age <= window else "stale"
+        return {
+            "available": True,
+            "state": state,
+            "age_seconds": age,
+            "window_seconds": window,
+            "device_id": rec.get("device_id"),
+            "note": ("求助发生时数据是新的（%.1f 秒前）" % age if state == "ok"
+                     else "求助发生时，最近一条数据已经是 %.0f 秒前的了 —— "
+                          "这条求助仍然有效，但不能用当时的数据推断现场" % age),
+        }
+
+    def _help_vision(self, ev: dict) -> dict:
+        """找这条求助关联的画面 + 模型判断（有就给，没有就说没有）。"""
+        eid = ev.get("id") or ""
+        snap = None
+        for s in SNAPSHOTS.all(limit=200):
+            if s.get("request_id") == eid and s.get("trigger") == "help_event":
+                snap = s
+                break
+        if snap is None:
+            return {"has_snapshot": False,
+                    "note": "这条求助没有配画面（只按了键，没有取图）"}
+        sid = snap.get("id")
+        v = None
+        for item in VISION_STORE.all(limit=200):
+            if item.get("snapshot_id") == sid:
+                v = item
+                break
+        if v is None:
+            return {"has_snapshot": True, "snapshot_id": sid,
+                    "snapshot_status": snap.get("status"),
+                    "has_vision": False,
+                    "note": "有画面，但还没让模型看过"}
+        res = (v.get("result") or {})
+        fb = v.get("feedback") or {}
+        return {
+            "has_snapshot": True,
+            "snapshot_id": sid,
+            "snapshot_status": snap.get("status"),
+            "has_vision": True,
+            "vision_id": v.get("id"),
+            "label": res.get("label"),
+            "score": res.get("score"),
+            "score_kind": res.get("score_kind") or "self_reported",
+            "corrected": bool(fb.get("verdict") == "wrong"),
+            "corrected_label": fb.get("corrected_label"),
+            "feedback_note": fb.get("note"),
+            "note": "模型判断（推断，不是观测）；判错了可以就地纠正",
+        }
 
     def api_help_record(self):
         """POST /api/help —— 设备（或网页模拟）发起一条教学求助测试消息。

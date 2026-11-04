@@ -498,6 +498,15 @@
   .tag.warn { background: var(--warn-bg); color: var(--warn-fg); }
   .tag.bad { background: var(--bad-bg); color: var(--bad); }
 
+
+  /* 个人项目迁移：求助卡片上的数据新鲜度与纠错按钮 */
+  .helpdata { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .helpdata .tag { flex: none; }
+  .fixbtns { margin-left: 6px; white-space: nowrap; }
+  .fixbtns button { font-size: 11px; padding: 1px 7px; margin-left: 4px;
+                    border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+                    background: var(--card); color: var(--text); cursor: pointer; }
+  .fixbtns button:hover:not(:disabled) { background: var(--surface-3); }
   /* 第10周：多来源状态 */
   .srcage { font-variant-numeric: tabular-nums; }
   .srcage.old { color: var(--warn-fg); }
@@ -2024,6 +2033,39 @@ function renderHelp(d) {
       `<span class="lv ${on ? 'on' : 'off'}" title="${detail}">` +
       `<span class="t">${label}</span> ${on ? '✓' : (offText || '—')}</span>`;
 
+    /* 个人项目迁移（第 10 周）：把「这条求助发生当时数据新不新」写出来。
+     * 求助本身是人按的键，事件永远有效；但当时的数据可能早过期了 ——
+     * 拿过期数据推断现场，和"有人按了键"是两件事，不能混成一句。 */
+    const fr = e.data_freshness || {};
+    const freshLine = (fr.state === 'ok' || fr.state === 'stale' || fr.state === 'absent')
+      ? `<div class="snap helpdata">` +
+        (fr.state === 'ok'
+          ? `<span class="tag ok">当时数据是新的</span>`
+          : (fr.state === 'stale'
+              ? `<span class="tag bad">当时数据已过期 ${Math.round(fr.age_seconds)} 秒</span>`
+              : `<span class="tag">当时无数据来源</span>`)) +
+        `<span>${fr.note || ''}</span></div>`
+      : '';
+
+    /* 个人项目迁移（第 8 周）：这条求助若配了画面，把模型判断和纠错入口一起给出。
+     * 纠错就地进行 —— 看到判断的地方就是能改判断的地方，不用跑去另一个分区。 */
+    const vv = e.vision || {};
+    const CN = { usable: '能看清', blocked: '被挡住', unclear: '看不清是什么' };
+    let visLine = '';
+    if (vv.has_vision) {
+      const lab = CN[vv.label] || vv.label || '未给出结论';
+      visLine = vv.corrected
+        ? `<div class="snap helpdata">模型判断：<s>${lab}</s> → <b>已纠正为 ${CN[vv.corrected_label] || vv.corrected_label}</b></div>`
+        : `<div class="snap helpdata">模型判断：<b>${lab}</b>` +
+          `（自报 ${vv.score}，未校准）<span class="fixbtns">判错了？` +
+          `<button data-vis="${vv.vision_id}" data-label="usable">能看清</button>` +
+          `<button data-vis="${vv.vision_id}" data-label="blocked">被挡住</button>` +
+          `<button data-vis="${vv.vision_id}" data-label="unclear">看不清</button>` +
+          `</span></div>`;
+    } else if (vv.has_snapshot) {
+      visLine = `<div class="snap helpdata">这条求助有画面，但还没让模型看过</div>`;
+    }
+
     const canReply = (st === 'open');
     const canCancel = (st !== 'cancelled');
     return `<div class="helprow ${st}">` +
@@ -2039,6 +2081,8 @@ function renderHelp(d) {
         `<span class="eid">${e.id}</span>` +
       `</div>` +
       `<div class="snap">当时环境：${snapTxt}</div>` +
+      freshLine +
+      visLine +
       `<div class="levels">` +
         badge(lv.local && lv.local.done, '① 本地确认',
               (lv.local || {}).note + '｜证据：' + (lv.local || {}).evidence) +
@@ -2085,6 +2129,29 @@ function renderHelp(d) {
     }
     b.addEventListener('click', () => replyHelp(b.dataset.id, act, b));
   });
+
+  /* 求助卡片上的「判错了」—— 复用第 8 周的纠错接口，不另开一套。
+   * 同样走事件委托：卡片是每轮重绘的，逐个绑会失效。 */
+  box.querySelectorAll('button[data-vis]').forEach(b => {
+    b.addEventListener('click',
+      () => correctHelpVision(b.dataset.vis, b.dataset.label, b));
+  });
+}
+
+async function correctHelpVision(vid, label, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(API_BASE + '/api/vision/' + encodeURIComponent(vid) + '/feedback', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verdict: 'wrong', corrected_label: label,
+                             note: '在求助卡片上就地纠正' })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    tick();                     // 立刻重绘，卡片上会变成「已纠正为 …」
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '失败，重试';
+  }
 }
 
 async function replyHelp(eid, action, btn) {
