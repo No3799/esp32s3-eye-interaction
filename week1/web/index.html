@@ -251,6 +251,7 @@
   body[data-tab="help"]     #panel-help,
   body[data-tab="camera"]   #panel-camera,
   body[data-tab="data"]     #panel-data,
+  body[data-tab="multi"]    #panel-multi,
   body[data-tab="nl"]       #panel-nl { display: block; }
 
   /* 窄屏：不让「全部」被 margin-left:auto 单独推到第二行右侧 ——
@@ -497,6 +498,43 @@
   .tag.warn { background: var(--warn-bg); color: var(--warn-fg); }
   .tag.bad { background: var(--bad-bg); color: var(--bad); }
 
+  /* 第10周：多来源状态 */
+  .srcage { font-variant-numeric: tabular-nums; }
+  .srcage.old { color: var(--warn-fg); }
+  .srcage.dead { color: var(--bad); }
+  .srcloc { margin-top: 12px; padding: 10px 12px; border-radius: var(--r-md);
+            background: var(--surface-2); border: 1px solid var(--border);
+            font-size: 13px; line-height: 1.7; color: var(--muted); }
+  .srcloc b { color: var(--text); }
+  .srcconf { display: grid; gap: 10px; }
+  .srcconf .item { padding: 10px 12px; border-radius: var(--r-md);
+                   background: var(--surface-2); border: 1px solid var(--border); }
+  .srcconf .case { font-size: 13px; font-weight: 600; color: var(--text); }
+  .srcconf .detail { margin-top: 3px; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .srcconf .explain { margin-top: 5px; font-size: 12.5px; color: var(--warn-fg); line-height: 1.7; }
+  .srcconf .item:only-child .explain { color: var(--muted); }
+
+  /* 第11周：三层上下文 */
+  .ctxreply { margin-top: 12px; padding: 12px 14px; border-radius: var(--r-md);
+              background: var(--surface-2); border: 1px solid var(--border); }
+  .ctxtext { font-size: 14px; line-height: 1.75; color: var(--text); }
+  .ctxbasis { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.7;
+              font-variant-numeric: tabular-nums; }
+  .ctxbasis b { color: var(--text); font-weight: 600; }
+  .ctxasks { margin-top: 8px; font-size: 12.5px; color: var(--warn-fg); line-height: 1.7; }
+  .ctxasks:empty { display: none; }
+  .ctxlayers { margin-top: 14px; }
+  .ctxlayers table { font-size: 12px; }
+  .ctxlayers th, .ctxlayers td { padding: 6px 10px; vertical-align: top; }
+  .ctxlayers td.lay { color: var(--muted); white-space: nowrap; width: 86px; }
+  .ctxlayers .infer { color: var(--warn-fg); }
+
+  /* 多源表：数字列不折行，说明列才允许换行 */
+  #panel-multi table th, #panel-multi table td { white-space: nowrap; }
+  #panel-multi table td:last-child { white-space: normal; line-height: 1.65; }
+  /* 提问框要能看见整句问题，不用 170px 那个窄尺寸 */
+  #panel-multi .seg input#ctxQ { width: min(560px, 62vw); }
+
   /* 第8周：视觉推理面板 */
   .visbox { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
   .vishead-row { display: flex; align-items: center; justify-content: space-between;
@@ -572,6 +610,7 @@
       <span class="badge" id="badgeHelp" hidden title="有待回应的求助">0</span></button>
     <button role="tab" data-tab="camera" aria-selected="false">影像</button>
     <button role="tab" data-tab="data" aria-selected="false">数据</button>
+    <button role="tab" data-tab="multi" aria-selected="false">多源</button>
     <button role="tab" data-tab="nl" aria-selected="false">语言</button>
     <button role="tab" data-tab="all" aria-selected="false" class="all">全部</button>
   </nav>
@@ -903,6 +942,96 @@
          回答     → 事实全部来自工具的真实返回
        所以你在下面看到的每一条数值、时间、状态，都是查库或查指令状态机查出来的，
        不是模型"说的"。 -->
+  <!-- ================= 第10—11周：多来源状态与可解释上下文 =================
+       第10周要证明的是：每个来源各自有观测时间，数据年龄按观测时间算，
+       "未尝试 / 失败 / 过期 / 无此来源" 是四件不同的事，不能混成"没数据"。
+       第11周要证明的是：回答里的每句话都能指到「哪个来源、什么时候、哪条规则」。 -->
+  <section class="panel" id="panel-multi">
+    <div class="chartbox">
+      <div class="charthead">
+        <h2>多来源状态 · 谁新谁旧分开说</h2>
+        <div class="seg">
+          <span id="srcRules">规则 —</span>
+          <button id="srcRefresh" type="button">刷新</button>
+        </div>
+      </div>
+      <p class="snaphint">
+        每个来源都记两个时间：<b>观测时间</b>是它自己量到的那一刻，<b>接收时间</b>是服务器收到的时刻。
+        数据年龄按<b>观测时间</b>算 —— 拿接收时间冒充观测时间，十分钟前的数据就会变成"刚刚"。
+      </p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>来源</th><th>类型</th><th>状态</th><th>数据年龄</th><th>观测时间</th><th>说明</th>
+          </tr></thead>
+          <tbody id="srcBody"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="srcloc" id="srcLocation">位置：—</div>
+    </div>
+
+    <div class="chartbox">
+      <div class="charthead"><h2>采集状态 ↔ 用户提示对照</h2></div>
+      <p class="snaphint">
+        同样是"没数据"，三种情况的处理方式完全不同。这张表就是页面上每种状态到底怎么说、
+        用户该做什么——状态词与代码里的 <code>state</code> 一一对应。
+      </p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>状态（代码）</th><th>页面上怎么说</th><th>用户该做什么</th></tr></thead>
+          <tbody>
+            <tr><td>not_attempted</td><td>未尝试 —— 还没采过</td><td>点一下拍照，或发起一次采集</td></tr>
+            <tr><td>ok</td><td>成功 —— 正常上报中（X 秒前）</td><td>不用处理</td></tr>
+            <tr><td>stale</td><td>已过期 —— 最近一条是 X 前的，代表那一刻</td><td>要确认"现在"，就重新采一次；不要拿旧值当现在</td></tr>
+            <tr><td>failed</td><td>失败 —— 这次没成（no_fix / 取图失败）</td><td>先重试一次；这不是"设备坏了"的证据</td></tr>
+            <tr><td>absent</td><td>无此来源 —— 本机没有这个硬件</td><td>换个来源，或由人来登记（系统不猜）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chartbox">
+      <div class="charthead"><h2>两组对照案例</h2></div>
+      <div class="srcconf" id="srcConflicts"><div class="item"><div class="detail">加载中…</div></div></div>
+    </div>
+
+    <div class="chartbox">
+      <div class="charthead">
+        <h2>演示动作 · 只写回放来源</h2>
+      </div>
+      <div class="seg" style="margin-left:0">
+        <button id="btnBackfill" type="button">补传 30 条（观测时间 10 分钟前）</button>
+        <button id="btnGnssFix" type="button">定位尝试：有解</button>
+        <button id="btnGnssNoFix" type="button">定位尝试：no_fix</button>
+      </div>
+      <p class="vishint" id="srcActNote">
+        这三个按钮只写「回放来源」。本机没有 GNSS 接收机，所以本机定位永远显示「无此来源」——
+        按钮不会把它改成"有定位"。
+      </p>
+    </div>
+
+    <div class="chartbox">
+      <div class="charthead">
+        <h2>问一句 · 已知事实 + 待确认</h2>
+        <div class="seg"><span id="ctxRules">规则 —</span></div>
+      </div>
+      <div class="seg" style="margin-left:0">
+        <input id="ctxQ" type="text" placeholder="例如：设备现在在哪？画面被挡住了危险吗？" autocomplete="off">
+        <button id="ctxAsk" type="button">问</button>
+      </div>
+      <p class="vishint">
+        这一栏不调语言模型，全部按有限规则回答。答案是<b>已知事实</b>，
+        拿不准的进<b>待确认</b>并追问你一句 —— 不会把"没证据"说成"没问题"。
+      </p>
+      <div class="ctxreply" id="ctxReply" hidden>
+        <div class="ctxtext" id="ctxText"></div>
+        <div class="ctxbasis" id="ctxBasis"></div>
+        <div class="ctxasks" id="ctxAsks"></div>
+      </div>
+      <div class="ctxlayers" id="ctxLayers"></div>
+    </div>
+  </section>
+
   <section class="panel" id="panel-nl">
   <div class="chartbox">
     <div class="charthead">
@@ -2375,7 +2504,7 @@ $('btnCsv').addEventListener('click', () => {
  *   · 刷新 / 分享链接能直接落在同一个分区（验收时可以直接给 #help）；
  *   · 浏览器前进后退键可用。
  */
-const TABS = ['overview', 'command', 'help', 'camera', 'data', 'nl', 'all'];
+const TABS = ['overview', 'command', 'help', 'camera', 'data', 'multi', 'nl', 'all'];
 
 function applyTab(name) {
   if (TABS.indexOf(name) < 0) name = 'overview';
@@ -2388,6 +2517,10 @@ function applyTab(name) {
   /* 曲线画布在隐藏分区里宽度是 0（drawChart 会直接跳过不画），
      所以切到可见分区时必须强制重画一次，否则看到的是一张空白或旧尺寸的图。 */
   if (name === 'overview' || name === 'all') drawChart(true);
+  /* 多源页的数据年龄一直在走，切进来的第一眼就要是新的 */
+  if (name === 'multi' && typeof loadSources === 'function') {
+    loadSources(); loadConflicts();
+  }
   clearHover();
 }
 
@@ -2987,6 +3120,179 @@ window.addEventListener('hashchange', () => applyTab(location.hash.slice(1) || '
     })
     .catch(() => {});
 })();
+
+
+/* ================= 第10周：多来源状态 =================
+   数据年龄一律由服务端按「观测时间」算好再送出来，页面不自己拿 received 时间猜。
+   页面的职责只有两个：把状态词照实显示、把"已过期/失败/无此来源"用不同颜色分开。 */
+const srcBody = document.getElementById('srcBody');
+const srcRules = document.getElementById('srcRules');
+const srcLocation = document.getElementById('srcLocation');
+const srcConflicts = document.getElementById('srcConflicts');
+const ctxRules = document.getElementById('ctxRules');
+const ctxReply = document.getElementById('ctxReply');
+const ctxText = document.getElementById('ctxText');
+const ctxBasis = document.getElementById('ctxBasis');
+const ctxAsks = document.getElementById('ctxAsks');
+const ctxLayers = document.getElementById('ctxLayers');
+
+const SRC_TAG = {ok: 'ok', stale: 'warn', failed: 'bad',
+                 not_attempted: '', absent: ''};
+
+function fmtAge(sec) {
+  if (sec === null || sec === undefined) return '—';
+  if (sec < 60) return sec.toFixed(1) + ' 秒';
+  if (sec < 3600) return (sec / 60).toFixed(1) + ' 分钟';
+  if (sec < 86400) return (sec / 3600).toFixed(1) + ' 小时';
+  return (sec / 86400).toFixed(1) + ' 天';
+}
+
+function fmtClock(ms) {
+  if (!ms) return '—';
+  const d = new Date(ms);
+  const p = n => String(n).padStart(2, '0');
+  return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+
+async function loadSources() {
+  if (!srcBody) return;
+  try {
+    const d = await (await fetch(API_BASE + '/api/sources', { cache: 'no-store' })).json();
+    if (srcRules) srcRules.textContent = '规则 ' + d.rules_version;
+    srcBody.innerHTML = '';
+    d.sources.forEach(s => {
+      const tr = document.createElement('tr');
+      const ageCls = s.state === 'stale' ? 'srcage old'
+                   : (s.state === 'failed' ? 'srcage dead' : 'srcage');
+      tr.innerHTML =
+        '<td>' + s.label + (s.replay ? ' <span class="tag">回放</span>' : '') + '</td>'
+        + '<td>' + s.kind + '</td>'
+        + '<td><span class="tag ' + (SRC_TAG[s.state] || '') + '">' + s.state_text + '</span></td>'
+        + '<td class="' + ageCls + '">' + fmtAge(s.age_seconds) + '</td>'
+        + '<td class="srcage">' + fmtClock(s.observed_at_ms) + '</td>'
+        + '<td style="text-align:left">' + s.note + '</td>';
+      srcBody.appendChild(tr);
+    });
+    const loc = d.location;
+    srcLocation.innerHTML = '<b>位置：</b>' + loc.text
+      + '　<span style="color:var(--muted)">（' + loc.reason + '）</span>';
+  } catch (e) {
+    srcBody.innerHTML = '<tr><td colspan="6" class="empty">读取失败：' + e.message + '</td></tr>';
+  }
+}
+
+async function loadConflicts() {
+  if (!srcConflicts) return;
+  try {
+    const d = await (await fetch(API_BASE + '/api/context/build', { cache: 'no-store' })).json();
+    if (ctxRules) ctxRules.textContent = '规则 ' + d.rules_version;
+    srcConflicts.innerHTML = '';
+    if (!d.conflicts.length) {
+      srcConflicts.innerHTML = '<div class="item"><div class="detail">'
+        + '当前没有冲突：各来源的新鲜度一致。</div></div>';
+      return;
+    }
+    d.conflicts.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML = '<div class="case">' + c.case + '</div>'
+        + '<div class="detail">' + c.detail + '</div>'
+        + '<div class="explain">' + c.explain + '</div>';
+      srcConflicts.appendChild(div);
+    });
+  } catch (e) { /* 冲突区读不到不影响主表 */ }
+}
+
+/* 第11周：问一句 —— 服务端返回三层结构，这里只负责把「依据」和「待确认」摆出来 */
+async function askContext() {
+  const q = document.getElementById('ctxQ').value.trim();
+  if (!q) return;
+  ctxReply.hidden = false;
+  ctxText.textContent = '查询中…';
+  ctxBasis.textContent = '';
+  ctxAsks.textContent = '';
+  try {
+    const d = await (await fetch(API_BASE + '/api/context/ask', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q })
+    })).json();
+    ctxText.textContent = d.reply.text;
+    ctxBasis.innerHTML = '<b>依据</b>：' + d.reply.basis
+      + '　<b>规则版本</b>：' + d.reply.rules_version;
+    ctxAsks.textContent = d.reply.asks.length ? ('要确认：' + d.reply.asks.join('　')) : '';
+    renderLayers(d);
+  } catch (e) {
+    ctxText.textContent = '查询失败：' + e.message;
+  }
+}
+
+function renderLayers(d) {
+  const rows = [];
+  d.layers.observations.forEach(o => {
+    const v = (o.value === null ? '—' : o.value) + (o.unit ? ' ' + o.unit : '');
+    rows.push(['观测', o.source_label + ' · ' + o.field + ' = ' + v
+      + '（' + o.age_text + (o.replay ? '，回放' : '') + '）', '']);
+  });
+  d.layers.derived.forEach(x => {
+    const cls = x.provenance === 'inference' ? ' class="infer"' : '';
+    rows.push(['派生', '<span' + cls + '>' + x.name + ' → ' + x.text
+      + '　<small>规则 ' + x.rule + '　依据：' + x.evidence
+      + (x.provenance === 'inference' ? '　[模型推断，非观测]' : '') + '</small></span>', '']);
+  });
+  const dec = d.layers.decision || {};
+  rows.push(['决策', '意图 ' + dec.intent + '　已知事实 ' + dec.facts_count
+    + ' 条　待确认 ' + dec.pending_count + ' 条', '']);
+
+  let html = '<table><thead><tr><th>层</th><th>内容</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += '<tr><td class="lay">' + r[0] + '</td><td style="text-align:left">' + r[1] + '</td></tr>';
+  });
+  ctxLayers.innerHTML = html + '</tbody></table>';
+}
+
+async function postJson(url, body, noteEl, okText) {
+  try {
+    const r = await fetch(API_BASE + url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (noteEl) {
+      noteEl.textContent = r.ok ? (okText + (d.note ? '　' + d.note : ''))
+                                : ('失败：' + (d.error || r.status));
+    }
+    await loadSources();
+    await loadConflicts();
+  } catch (e) {
+    if (noteEl) noteEl.textContent = '请求失败：' + e.message;
+  }
+}
+
+if (document.getElementById('btnBackfill')) {
+  const note = document.getElementById('srcActNote');
+  document.getElementById('btnBackfill').addEventListener('click',
+    () => postJson('/api/sources/replay',
+      { source: 'imu-replay', count: 30, minutes_ago: 10 }, note,
+      '已灌入 30 条：观测时间在 10 分钟前，接收时间是现在'));
+  document.getElementById('btnGnssFix').addEventListener('click',
+    () => postJson('/api/sources/gnss', { fix: true }, note, '已写入一次「有解」回放事件'));
+  document.getElementById('btnGnssNoFix').addEventListener('click',
+    () => postJson('/api/sources/gnss', { fix: false }, note, '已写入一次「no_fix」回放事件'));
+  document.getElementById('srcRefresh').addEventListener('click', () => {
+    loadSources(); loadConflicts();
+  });
+  document.getElementById('ctxAsk').addEventListener('click', askContext);
+  document.getElementById('ctxQ').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') askContext();
+  });
+  loadSources();
+  loadConflicts();
+  /* 这一页的数据年龄每秒都在变，5 秒刷一次足够；后台不刷。 */
+  setInterval(() => {
+    if (document.hidden) return;
+    if (document.body.dataset.tab === 'multi') { loadSources(); loadConflicts(); }
+  }, 5000);
+}
 
 renderLegend();
 applyTab(location.hash.slice(1) || 'overview');

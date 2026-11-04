@@ -55,3 +55,6 @@ desktop.ini
 *_bak/
 *.bak
 ~$*
+
+# 第10—11周：单次测试用的探针事件流（每次运行都会重建）
+week1/data/sources/events_probe*.jsonl

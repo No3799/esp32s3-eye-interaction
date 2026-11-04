@@ -55,6 +55,8 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from camera_relay import CameraRelay, CLIENT_BOUNDARY, FRAME_BOUNDARY
 from proactive import ProactiveGuard
+from sources import SOURCES, RULES_VERSION, SourceBoard
+from context_rules import RULES, ContextBuilder
 from snapshots import SnapshotStore, SnapshotService
 from vision_agent import UNCERTAIN_BELOW, VisionAgent
 from vision_store import VisionStore
@@ -269,6 +271,16 @@ VISION_STORE = VisionStore(DATA_DIR)
 # 不负责生成文案（文案在前端）。冷却状态落盘，刷新页面也不会忘。
 PROACTIVE = ProactiveGuard(DATA_DIR)
 
+# 第10周：多来源状态。每个来源独立记「观测时间」与「接收时间」，
+# 状态分五档（未尝试/成功/已过期/失败/无此来源）—— 三种"没数据"必须分开说。
+# 本机没有 GNSS，这类来源固定标"无此来源"，不拿回放样例顶替。
+SOURCE_BOARD = SourceBoard(CONN, LOCK, SNAPSHOTS,
+                           os.path.join(DATA_DIR, "sources", "events.jsonl"))
+
+# 第11周：把多源证据组织成「观测 → 派生 → 决策」三层，产出带依据的回复与追问。
+# 纯规则，不调模型：这一周要证明的是"判断能被追溯"，不是"话说得漂亮"。
+CONTEXT_BUILDER = ContextBuilder(SOURCE_BOARD, HELP, VISION_STORE)
+
 
 # ---- 第4周：自然语言助手（产品运行时模型 + 受限工具）----
 # LLM 的地址/密钥只从**服务端环境变量**读（NL_LLM_BASE_URL / NL_LLM_API_KEY /
@@ -354,6 +366,19 @@ class Handler(BaseHTTPRequestHandler):
         # 第9周：主动询问的冷却状态
         if path == "/api/proactive/state":
             return self._send_json(200, PROACTIVE.state())
+        # 第10周：多来源状态页
+        if path == "/api/sources":
+            device = (qs.get("device_id") or [None])[0]
+            return self._send_json(200, SOURCE_BOARD.snapshot(device))
+        if path == "/api/sources/catalog":
+            return self._send_json(200, {"rules_version": RULES_VERSION,
+                                         "sources": SOURCES})
+        # 第11周：三层上下文 + 规则清单
+        if path == "/api/context/build":
+            return self._send_json(200, CONTEXT_BUILDER.build())
+        if path == "/api/context/rules":
+            return self._send_json(200, {"rules_version": RULES_VERSION,
+                                         "rules": RULES})
         if path == "/api/commands":
             return self.api_commands(qs)
         if path == "/api/buttons":
@@ -1001,6 +1026,75 @@ class Handler(BaseHTTPRequestHandler):
             }.get(action, ""),
         })
 
+    def api_sources_replay(self):
+        """POST /api/sources/replay {source?, count?, minutes_ago?}
+
+        把历史 readings 按**原本的观测时间**重新灌进事件流，用来演示
+        "补传的数据应该按观测时间解释，而不是按到达时间"。
+
+        ⚠️ 这不是"设备真的补传了"——固件没有缓存补传能力。写进事件流时
+        带 replay=True，页面上也标"回放"，不会混进真实来源的统计。
+        """
+        body, code = self._read_json_body()
+        if code:
+            return code
+        source = str(body.get("source") or "imu-replay").strip()
+        if source not in ("imu-replay", "gnss-replay"):
+            return self._send_json(400, {
+                "error": "source 只能是 imu-replay / gnss-replay", "got": source})
+        try:
+            count = int(body.get("count") or 30)
+            shift = int(body.get("minutes_ago") or 0)
+        except (TypeError, ValueError):
+            return self._send_json(400, {"error": "count / minutes_ago 必须是整数"})
+        res = SOURCE_BOARD.replay_backfill(
+            source, count=count,
+            device_id=str(body.get("device_id") or "").strip() or None,
+            minutes_ago=shift or None)
+        if not res.get("ok"):
+            return self._send_json(400, res)
+        return self._send_json(200, res)
+
+    def api_sources_gnss(self):
+        """POST /api/sources/gnss {fix: bool, note?}
+
+        只允许对**回放来源** gnss-replay 记事件。本机的 `gnss` 来源固定
+        "无此来源"——不能因为这里收到一条模拟事件就变成"本机有定位"。
+        """
+        body, code = self._read_json_body()
+        if code:
+            return code
+        fix = bool(body.get("fix"))
+        payload = {}
+        if fix:
+            # 回放样例坐标：固定值，明确标注来源，永远不用于回答"设备在哪"
+            payload = {"lat": 31.2304, "lon": 121.4737, "sample": True,
+                       "origin": "课程回放样例（非本机采集）"}
+        rec = SOURCE_BOARD.record_event(
+            "gnss-replay", "ok" if fix else "no_fix",
+            int(body.get("observed_at_ms") or time.time() * 1000),
+            payload=payload,
+            note=str(body.get("note") or ("回放：有有效解" if fix else "回放：本次 no_fix")),
+            replay=True)
+        return self._send_json(200, {
+            "ok": True, "record": rec,
+            "note": "这条事件只写进 gnss-replay（回放来源），不影响本机 gnss 的"
+                    "「无此来源」结论",
+        })
+
+    def api_context_ask(self):
+        """POST /api/context/ask {question}
+
+        纯规则路由，不调语言模型：这一周要证明判断可追溯，不是话说得漂亮。
+        """
+        body, code = self._read_json_body()
+        if code:
+            return code
+        q = str(body.get("question") or "").strip()
+        if not q:
+            return self._send_json(400, {"error": "question required"})
+        return self._send_json(200, CONTEXT_BUILDER.ask(q))
+
     def api_camera(self):
         """把板子的 MJPEG 流转发给浏览器。
         注意：服务器与板子之间始终只有 1 路连接，浏览器再多也不会压垮板子。"""
@@ -1084,6 +1178,14 @@ class Handler(BaseHTTPRequestHandler):
         # 第9周：用户对主动询问的回应
         if path == "/api/proactive/respond":
             return self.api_proactive_respond()
+        # 第10周：补传回放 + 定位尝试（回放来源）
+        if path == "/api/sources/replay":
+            return self.api_sources_replay()
+        if path == "/api/sources/gnss":
+            return self.api_sources_gnss()
+        # 第11周：按问题生成三层上下文的回复
+        if path == "/api/context/ask":
+            return self.api_context_ask()
         if path != "/api/data":
             return self._send_json(404, {"error": "not found"})
 
