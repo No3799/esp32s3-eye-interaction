@@ -534,6 +534,9 @@
   #panel-multi table td:last-child { white-space: normal; line-height: 1.65; }
   /* 提问框要能看见整句问题，不用 170px 那个窄尺寸 */
   #panel-multi .seg input#ctxQ { width: min(560px, 62vw); }
+  /* 对照表三列都是文字，右对齐会把整段说明挤到最右边 */
+  #panel-multi table.stattable td, #panel-multi table.stattable th { text-align: left; }
+  #panel-multi table.stattable td:first-child { font-family: var(--mono, monospace); color: var(--muted); }
 
   /* 第8周：视觉推理面板 */
   .visbox { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
@@ -977,7 +980,7 @@
         用户该做什么——状态词与代码里的 <code>state</code> 一一对应。
       </p>
       <div class="tablewrap">
-        <table>
+        <table class="stattable">
           <thead><tr><th>状态（代码）</th><th>页面上怎么说</th><th>用户该做什么</th></tr></thead>
           <tbody>
             <tr><td>not_attempted</td><td>未尝试 —— 还没采过</td><td>点一下拍照，或发起一次采集</td></tr>
